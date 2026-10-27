@@ -1,0 +1,159 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PRM Agent Import API",
+    "version": "0.4.0",
+    "description": "外部 AI Agent 向本人的 PRM 推送资源、关系与待办。导入内容只会成为待本人审核的建议；连接令牌只能导入并查询自己导入的状态，不能读取 PRM 中的任何数据。服务只监听本机回环地址。"
+  },
+  "servers": [{ "url": "http://127.0.0.1:4317" }],
+  "security": [{ "connectionToken": [] }],
+  "components": {
+    "securitySchemes": {
+      "connectionToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "在 PRM「数字空间 · Agent 接入」签发的连接令牌（prm_ 开头，只显示一次）。"
+      }
+    },
+    "parameters": {
+      "PrmRequest": {
+        "name": "X-PRM-Request",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "const": "1" },
+        "description": "所有 POST 请求都必须携带，用于阻止跨站请求。"
+      }
+    },
+    "schemas": {
+      "Scene": {
+        "type": "string",
+        "enum": ["self", "emotion", "life", "work", "health", "learning", "finance", "social"],
+        "description": "人生场景：自我、情感、生活、工作、健康、学习、财务、社交"
+      },
+      "ImportItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind"],
+        "properties": {
+          "ref": { "type": "string", "maxLength": 40, "pattern": "^[A-Za-z0-9_-]*$", "description": "本批内唯一编号，供关系项引用" },
+          "kind": { "type": "string", "enum": ["resource", "relation", "message", "note", "person", "task"] },
+          "title": { "type": "string", "maxLength": 160, "description": "除关系项外必填" },
+          "body": { "type": "string", "maxLength": 8000 },
+          "scenes": { "type": "array", "items": { "$ref": "#/components/schemas/Scene" } },
+          "attributes": {
+            "type": "object",
+            "maxProperties": 20,
+            "propertyNames": { "pattern": "^[a-z0-9_]{1,40}$" },
+            "additionalProperties": { "type": "string", "maxLength": 400 },
+            "description": "补充属性，例如资源的 unit、location、sku、category、minimum"
+          },
+          "subject": { "type": "string", "maxLength": 80, "description": "关系项：起点项的 ref，或 PRM 实体 id" },
+          "predicate": { "type": "string", "enum": ["references", "uses", "supplies", "stored_at", "implements"] },
+          "object": { "type": "string", "maxLength": 80, "description": "关系项：终点项的 ref，或 PRM 实体 id" }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["role", "content"],
+        "properties": {
+          "role": { "type": "string", "enum": ["system", "user", "assistant", "tool"], "description": "只有 user 与 assistant 会被导入" },
+          "content": {
+            "oneOf": [
+              { "type": "string", "maxLength": 8000 },
+              { "type": "array", "items": { "type": "object", "properties": { "type": { "const": "text" }, "text": { "type": "string" } } } }
+            ]
+          },
+          "name": { "type": "string" }
+        }
+      },
+      "ImportRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "items 与 messages 二选一。整个请求体不超过 128 KiB。",
+        "properties": {
+          "format": { "type": "string", "enum": ["prm-import-v1", "chat-messages-v1"] },
+          "conversation": { "type": "string", "maxLength": 200 },
+          "scenes": { "type": "array", "items": { "$ref": "#/components/schemas/Scene" } },
+          "items": { "type": "array", "maxItems": 100, "items": { "$ref": "#/components/schemas/ImportItem" } },
+          "messages": { "type": "array", "maxItems": 100, "items": { "$ref": "#/components/schemas/ChatMessage" } }
+        }
+      },
+      "ImportOutcome": {
+        "type": "object",
+        "properties": {
+          "import_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["processed", "queued"] },
+          "executor": { "type": "string", "enum": ["offline-rules", "local-model"] },
+          "proposals_created": { "type": "integer" },
+          "review_required": { "type": "boolean", "const": true }
+        }
+      },
+      "ImportStatus": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["queued", "processing", "processed", "failed"] },
+          "received_at": { "type": "string" },
+          "item_count": { "type": "integer" },
+          "proposals": {
+            "type": "object",
+            "properties": {
+              "pending": { "type": "integer" },
+              "approved": { "type": "integer" },
+              "rejected": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "Error": { "type": "object", "properties": { "error": { "type": "string" } } }
+    }
+  },
+  "paths": {
+    "/api/agent/import": {
+      "post": {
+        "operationId": "prmImport",
+        "summary": "导入资源、关系与待办，由本人审核后纳入 PRM",
+        "parameters": [{ "$ref": "#/components/parameters/PrmRequest" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportRequest" } } }
+        },
+        "responses": {
+          "200": { "description": "已接收", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportOutcome" } } } },
+          "400": { "description": "内容不合法", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "令牌无效或已撤销" },
+          "413": { "description": "请求体超过 128 KiB" },
+          "422": { "description": "JSON 结构不符合约定（含未知字段）" }
+        }
+      }
+    },
+    "/api/agent/imports": {
+      "get": {
+        "operationId": "prmListImports",
+        "summary": "列出本连接最近的导入状态",
+        "responses": {
+          "200": {
+            "description": "最近 50 个导入",
+            "content": {
+              "application/json": {
+                "schema": { "type": "object", "properties": { "imports": { "type": "array", "items": { "$ref": "#/components/schemas/ImportStatus" } } } }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/imports/{id}": {
+      "get": {
+        "operationId": "prmImportStatus",
+        "summary": "查询一个导入的处理状态",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportStatus" } } } },
+          "404": { "description": "不存在，或不属于本连接" }
+        }
+      }
+    }
+  }
+}
