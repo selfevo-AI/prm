@@ -1,6 +1,6 @@
-//! Physical-world resources following ERP practice and the REA ontology:
-//! item master (resource), locations, suppliers, purchase orders as commitments,
-//! and immutable stock / cash events that fulfil them.
+//! PRP (personal resource planning): physical-world resources following the REA
+//! ontology — item master (resource), locations, suppliers, purchase orders as
+//! commitments, and immutable stock / cash events that fulfil them.
 use crate::{
     error::{require, Error, Result},
     ontology::{self, is_date, validate_optional, validate_text, validate_values, Entity},
@@ -75,9 +75,15 @@ pub fn resource_properties(store: &Store, props: Value) -> Result<Value> {
     };
     validate_text(&location, 120)?;
     require((0..=MAX_QUANTITY).contains(&p.minimum), "最低库存不合法")?;
-    require((0..=MAX_QUANTITY).contains(&p.reorder_qty), "建议补货量不合法")?;
+    require(
+        (0..=MAX_QUANTITY).contains(&p.reorder_qty),
+        "建议补货量不合法",
+    )?;
     require((0..=3650).contains(&p.lead_time_days), "交货周期不合法")?;
-    require((0..=MAX_CENTS).contains(&p.unit_cost_cents), "单位成本不合法")?;
+    require(
+        (0..=MAX_CENTS).contains(&p.unit_cost_cents),
+        "单位成本不合法",
+    )?;
     require(
         ITEM_TYPES.iter().any(|(id, _)| *id == p.item_type),
         "物料类型不合法",
@@ -87,7 +93,7 @@ pub fn resource_properties(store: &Store, props: Value) -> Result<Value> {
             && p.category.chars().count() <= 80
             && p.supplier.chars().count() <= 120
             && p.serial_no.chars().count() <= 80,
-        "资源 ERP 字段过长",
+        "资源 PRP 字段过长",
     )?;
     require(
         p.warranty_until.is_empty() || is_date(&p.warranty_until),
@@ -185,8 +191,13 @@ pub fn line_properties(store: &Store, props: Value) -> Result<Value> {
     }
     let p: LineProps =
         serde_json::from_value(props).map_err(|_| Error::Bad("采购订单行字段不合法".into()))?;
-    let order = reference(store, &p.purchase_order_id, "purchase_order", "采购订单不存在")?
-        .ok_or(Error::Bad("采购订单不存在".into()))?;
+    let order = reference(
+        store,
+        &p.purchase_order_id,
+        "purchase_order",
+        "采购订单不存在",
+    )?
+    .ok_or(Error::Bad("采购订单不存在".into()))?;
     require(is_draft(&order), "只有草稿状态的采购订单可以添加订单行")?;
     let resource = reference(store, &p.resource_id, "resource", "资源不存在")?
         .ok_or(Error::Bad("资源不存在".into()))?;
@@ -465,7 +476,9 @@ pub async fn receive(
         )?;
         for (index, item) in body.lines.iter().enumerate() {
             require(
-                body.lines[..index].iter().all(|o| o.line_id != item.line_id),
+                body.lines[..index]
+                    .iter()
+                    .all(|o| o.line_id != item.line_id),
                 "订单行重复",
             )?;
             let mut line = store.entity(&item.line_id)?;

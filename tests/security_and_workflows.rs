@@ -235,10 +235,7 @@ async fn inventory_rejects_negative_stock_stale_writes_and_fractional_quantities
     let movements = h.entities("stock_movement").await;
     assert_eq!(movements.len(), 1);
     assert_eq!(movements[0]["properties"]["movement_type"], "receipt");
-    assert_eq!(
-        h.entities("resource").await[0]["properties"]["quantity"],
-        3
-    );
+    assert_eq!(h.entities("resource").await[0]["properties"]["quantity"], 3);
 }
 
 #[tokio::test]

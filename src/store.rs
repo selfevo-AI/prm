@@ -43,8 +43,19 @@ fn raw(r: &crate::database::Row) -> std::result::Result<RawEntity, postgres::Err
     ))
 }
 fn parse(row: RawEntity) -> Result<Entity> {
-    let (id, kind, title, worlds, values, scenes, properties, status, version, created_at, updated_at) =
-        row;
+    let (
+        id,
+        kind,
+        title,
+        worlds,
+        values,
+        scenes,
+        properties,
+        status,
+        version,
+        created_at,
+        updated_at,
+    ) = row;
     Ok(Entity {
         id,
         kind,
@@ -147,9 +158,9 @@ impl Store {
         rows.map(|row| parse(row?)).collect()
     }
     pub fn entity(&self, entity_id: &str) -> Result<Entity> {
-        let mut statement = self
-            .db
-            .prepare(&format!("SELECT {ENTITY_COLUMNS} FROM entities WHERE id=$1"))?;
+        let mut statement = self.db.prepare(&format!(
+            "SELECT {ENTITY_COLUMNS} FROM entities WHERE id=$1"
+        ))?;
         let mut rows = statement.query_map(params![entity_id], raw)?;
         match rows.next() {
             Some(row) => parse(row?),

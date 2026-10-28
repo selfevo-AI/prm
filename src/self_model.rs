@@ -407,12 +407,24 @@ pub const INSTRUMENTS: &[InstrumentDef] = &[
 ];
 /// Stances toward the self (relations with oneself).
 pub const STANCES: &[(&str, &str, &str)] = &[
-    ("acceptance", "自我接纳", "接受现在的自己，包括优点与不足（Ryff）"),
+    (
+        "acceptance",
+        "自我接纳",
+        "接受现在的自己，包括优点与不足（Ryff）",
+    ),
     ("compassion", "自我关怀", "在困难或失败时善待自己（Neff）"),
     ("criticism", "自我苛责", "对自己的严厉评判与要求"),
     ("trust", "自我信任", "相信自己的判断与能力"),
-    ("ideal", "理想自我", "我希望成为的样子（Higgins 自我差异理论）"),
-    ("ought", "应然自我", "我认为应该成为的样子（Higgins 自我差异理论）"),
+    (
+        "ideal",
+        "理想自我",
+        "我希望成为的样子（Higgins 自我差异理论）",
+    ),
+    (
+        "ought",
+        "应然自我",
+        "我认为应该成为的样子（Higgins 自我差异理论）",
+    ),
     ("boundary", "自我边界", "我为自己设定并维护的界限"),
     ("growth", "成长意图", "我正在有意培养的方面"),
 ];
@@ -550,7 +562,10 @@ pub async fn assessment(
     Json(body): Json<AssessmentInput>,
 ) -> Result<Json<Value>> {
     actor.owner()?;
-    require(observed_at_valid(&body.observed_at), "观察时间必须是 RFC3339 或 YYYY-MM-DD")?;
+    require(
+        observed_at_valid(&body.observed_at),
+        "观察时间必须是 RFC3339 或 YYYY-MM-DD",
+    )?;
     validate_optional(&body.notes, 4000, "备注过长")?;
     validate_values(&body.values)?;
     ontology::validate_scenes(&body.scenes)?;
@@ -559,8 +574,7 @@ pub async fn assessment(
         "请填写至少一项得分",
     )?;
     let mut readings: Vec<(&str, String, Value)> = Vec::new();
-    let default_scenes: Vec<String>;
-    if body.instrument == "custom" {
+    let default_scenes: Vec<String> = if body.instrument == "custom" {
         validate_text(&body.custom_label, 40)?;
         validate_optional(&body.custom_unit, 20, "单位过长")?;
         let score = &body.scores[0];
@@ -581,7 +595,7 @@ pub async fn assessment(
             body.custom_label.trim().to_string(),
             json!({"metric": "custom", "instrument": "custom", "label": body.custom_label.trim(), "value": score.value, "unit": body.custom_unit, "range": null, "higher": "neutral"}),
         ));
-        default_scenes = ontology::scenes_for(kind, &[])?;
+        ontology::scenes_for(kind, &[])?
     } else {
         let instrument = instrument(&body.instrument)
             .filter(|i| i.domain != "relationship")
@@ -598,7 +612,9 @@ pub async fn assessment(
                 .find(|m| m.id == score.metric)
                 .ok_or(Error::Bad("指标不属于所选量表".into()))?;
             require(
-                body.scores[..index].iter().all(|o| o.metric != score.metric),
+                body.scores[..index]
+                    .iter()
+                    .all(|o| o.metric != score.metric),
                 "同一指标只能填写一次",
             )?;
             require(
@@ -611,8 +627,8 @@ pub async fn assessment(
                 json!({"metric": def.id, "instrument": instrument.id, "label": def.label, "value": score.value, "unit": def.unit, "range": [def.min, def.max], "higher": def.higher}),
             ));
         }
-        default_scenes = instrument.scenes.iter().map(|s| s.to_string()).collect();
-    }
+        instrument.scenes.iter().map(|s| s.to_string()).collect()
+    };
     let scenes = if body.scenes.is_empty() {
         default_scenes
     } else {

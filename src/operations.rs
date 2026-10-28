@@ -1,8 +1,8 @@
 use crate::{
-    agents, erp,
+    agents,
     error::{require, Error, Result},
     ontology::{self, is_date, validate_text, validate_values, Entity, EntityInput},
-    relationships,
+    prp, relationships,
     store::Store,
     Actor, AppState,
 };
@@ -41,11 +41,11 @@ pub async fn workspace(
 /// Validate kind-specific properties; returns the normalized properties and the initial status.
 pub fn normalize(store: &Store, kind: &str, properties: Value) -> Result<(Value, &'static str)> {
     match kind {
-        "resource" => Ok((erp::resource_properties(store, properties)?, "active")),
-        "location" => Ok((erp::location_properties(store, properties)?, "active")),
-        "supplier" => Ok((erp::supplier_properties(properties)?, "active")),
-        "purchase_order" => Ok((erp::order_properties(store, properties)?, "draft")),
-        "purchase_order_line" => Ok((erp::line_properties(store, properties)?, "open")),
+        "resource" => Ok((prp::resource_properties(store, properties)?, "active")),
+        "location" => Ok((prp::location_properties(store, properties)?, "active")),
+        "supplier" => Ok((prp::supplier_properties(properties)?, "active")),
+        "purchase_order" => Ok((prp::order_properties(store, properties)?, "draft")),
+        "purchase_order_line" => Ok((prp::line_properties(store, properties)?, "open")),
         "person" => Ok((relationships::person_properties(properties)?, "active")),
         "task" => {
             #[derive(Deserialize)]
@@ -143,7 +143,7 @@ pub fn insert_entity(
             let resource = text("resource_id").ok_or(Error::NotFound)?;
             store.relate(&order, "contains", &entity.id)?;
             store.relate(&entity.id, "orders", &resource)?;
-            erp::add_line_total(
+            prp::add_line_total(
                 store,
                 &order,
                 entity.properties["line_total_cents"].as_i64().unwrap_or(0),

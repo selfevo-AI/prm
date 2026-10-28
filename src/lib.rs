@@ -4,10 +4,10 @@ mod auth;
 pub mod crypto;
 pub mod database;
 pub mod error;
-mod erp;
 mod legacy;
 pub mod ontology;
 mod operations;
+mod prp;
 mod relationships;
 mod security;
 mod self_model;
@@ -350,11 +350,11 @@ pub fn app(state: AppState) -> Router {
             "/api/relationships/{id}/interactions",
             post(relationships::interaction),
         )
-        .route("/api/resources/{id}/movement", post(erp::movement))
-        .route("/api/cash", post(erp::cash))
-        .route("/api/purchase-orders/{id}/status", post(erp::order_status))
-        .route("/api/purchase-orders/{id}/receive", post(erp::receive))
-        .route("/api/purchase-orders/{id}/pay", post(erp::pay))
+        .route("/api/resources/{id}/movement", post(prp::movement))
+        .route("/api/cash", post(prp::cash))
+        .route("/api/purchase-orders/{id}/status", post(prp::order_status))
+        .route("/api/purchase-orders/{id}/receive", post(prp::receive))
+        .route("/api/purchase-orders/{id}/pay", post(prp::pay))
         .route("/api/messages", post(analysis::message))
         .route("/api/analyze", post(analysis::analyze))
         .route("/api/proposals/{id}/decide", post(analysis::decide))
@@ -374,11 +374,17 @@ pub fn app(state: AppState) -> Router {
         )
         .route("/api/agent/import", post(agents::gateway::import))
         .route("/api/agent/imports", get(agents::gateway::imports))
-        .route("/api/agent/imports/{id}", get(agents::gateway::import_status))
+        .route(
+            "/api/agent/imports/{id}",
+            get(agents::gateway::import_status),
+        )
         .route("/api/agent/context", get(agents::executor::context))
         .route("/api/agent/proposals", post(agents::executor::proposal))
         .route("/api/agent/jobs/claim", post(agents::executor::claim))
-        .route("/api/agent/jobs/{id}/result", post(agents::executor::result))
+        .route(
+            "/api/agent/jobs/{id}/result",
+            post(agents::executor::result),
+        )
         .route("/api/agent/jobs/{id}/fail", post(agents::executor::fail))
         .fallback_service(
             ServeDir::new("dist").not_found_service(ServeFile::new("dist/index.html")),

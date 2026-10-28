@@ -19,7 +19,10 @@ use std::collections::BTreeMap;
 
 pub const PROVIDERS: &[(&str, &str)] = &[
     ("ollama", "Ollama"),
-    ("openai_compatible", "OpenAI 兼容（LM Studio、llama.cpp、vLLM 等）"),
+    (
+        "openai_compatible",
+        "OpenAI 兼容（LM Studio、llama.cpp、vLLM 等）",
+    ),
 ];
 /// Standing rules for every local model run.
 pub const RULES: &[&str] = &[
@@ -149,7 +152,11 @@ pub async fn create_route(
         } else {
             match store.entity(&body.executor) {
                 Ok(model) if model.kind == "model_endpoint" => model.title,
-                _ => return Err(Error::Bad("执行方式必须是离线规则或已登记的本地模型".into())),
+                _ => {
+                    return Err(Error::Bad(
+                        "执行方式必须是离线规则或已登记的本地模型".into(),
+                    ))
+                }
             }
         };
         let entity = store.insert(
@@ -223,13 +230,18 @@ pub fn route(store: &Store, agent: &str, scenes: &[String], items: &[ImportItem]
             .then(a.created_at.cmp(&b.created_at))
     });
     let mut import_scenes: Vec<&str> = scenes.iter().map(String::as_str).collect();
-    import_scenes.extend(items.iter().flat_map(|i| i.scenes.iter().map(String::as_str)));
+    import_scenes.extend(
+        items
+            .iter()
+            .flat_map(|i| i.scenes.iter().map(String::as_str)),
+    );
     for rule in rules {
         let p = &rule.properties;
         let field = |key: &str| p[key].as_str().unwrap_or("").to_string();
         let matches = (field("agent_id").is_empty() || field("agent_id") == agent)
             && (field("scene").is_empty() || import_scenes.contains(&field("scene").as_str()))
-            && (field("item_kind").is_empty() || items.iter().any(|i| i.kind == field("item_kind")));
+            && (field("item_kind").is_empty()
+                || items.iter().any(|i| i.kind == field("item_kind")));
         if !matches {
             continue;
         }
@@ -294,16 +306,23 @@ pub fn principles_context(store: &Store, scenes: &[String]) -> Result<Value> {
         .map(|e| json!({"id": e.id, "statement": e.title, "stance": e.properties["stance"], "intensity": e.properties["intensity"], "scenes": e.scenes}))
         .collect();
     let mut latest: BTreeMap<String, &Entity> = BTreeMap::new();
-    for e in entities
-        .iter()
-        .filter(|e| ["body_metric", "psychological_metric"].contains(&e.kind.as_str()) && visible(e))
-    {
+    for e in entities.iter().filter(|e| {
+        ["body_metric", "psychological_metric"].contains(&e.kind.as_str()) && visible(e)
+    }) {
         let key = match e.properties["metric"].as_str() {
             Some("custom") | None => e.title.clone(),
             Some(metric) => metric.to_string(),
         };
-        let observed = |x: &Entity| x.properties["observed_at"].as_str().unwrap_or("").to_string();
-        if latest.get(&key).is_none_or(|current| observed(current) < observed(e)) {
+        let observed = |x: &Entity| {
+            x.properties["observed_at"]
+                .as_str()
+                .unwrap_or("")
+                .to_string()
+        };
+        if latest
+            .get(&key)
+            .is_none_or(|current| observed(current) < observed(e))
+        {
             latest.insert(key, e);
         }
     }

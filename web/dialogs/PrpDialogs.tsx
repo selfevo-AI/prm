@@ -3,7 +3,7 @@ import { api, cents, money, num, prop, today, type Dialog, type Workspace } from
 import { Modal, SceneInput, SelectField, TextField } from "../components";
 
 const types = ["location", "supplier", "purchase_order", "order_line", "receive", "pay", "adjust"];
-export const isErpDialog = (type: string) => types.includes(type);
+export const isPrpDialog = (type: string) => types.includes(type);
 const titles: Record<string, string> = {
   location: "新建库位",
   supplier: "新建供应商",
@@ -14,7 +14,7 @@ const titles: Record<string, string> = {
   adjust: "库存盘点",
 };
 
-export function ErpDialog({
+export function PrpDialog({
   dialog,
   workspace,
   onClose,

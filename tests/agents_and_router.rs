@@ -45,7 +45,11 @@ async fn external_agents_can_only_import_and_read_their_own_status() {
         "/api/self/agent-preview",
         "/api/agents/connections",
     ] {
-        assert_eq!(h.bearer(&token, path, None).await.0, StatusCode::FORBIDDEN, "{path}");
+        assert_eq!(
+            h.bearer(&token, path, None).await.0,
+            StatusCode::FORBIDDEN,
+            "{path}"
+        );
     }
     for path in [
         "/api/agent/jobs/claim",
@@ -103,9 +107,13 @@ async fn external_agents_can_only_import_and_read_their_own_status() {
         StatusCode::UNPROCESSABLE_ENTITY
     );
     assert_eq!(
-        h.bearer(&token, IMPORT, Some(json!({"items":[{"kind":"payment","title":"x"}]})))
-            .await
-            .0,
+        h.bearer(
+            &token,
+            IMPORT,
+            Some(json!({"items":[{"kind":"payment","title":"x"}]}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     assert_eq!(
@@ -115,9 +123,13 @@ async fn external_agents_can_only_import_and_read_their_own_status() {
         StatusCode::OK
     );
     assert_eq!(
-        h.bearer(&token, IMPORT, Some(json!({"items":[{"kind":"note","title":"x"}]})))
-            .await
-            .0,
+        h.bearer(
+            &token,
+            IMPORT,
+            Some(json!({"items":[{"kind":"note","title":"x"}]}))
+        )
+        .await
+        .0,
         StatusCode::UNAUTHORIZED
     );
 }
@@ -142,7 +154,8 @@ async fn imported_resources_and_relations_enter_the_ontology_only_after_approval
     assert_eq!(relation["properties"]["relation"]["subject"], "#p1");
     let (status, error) = approve(&h, &relation, "").await;
     assert_eq!(status, StatusCode::CONFLICT, "{error}");
-    let (status, created) = approve(&h, &by_action("create_entity", "resource"), "会议室投影仪").await;
+    let (status, created) =
+        approve(&h, &by_action("create_entity", "resource"), "会议室投影仪").await;
     assert_eq!(status, StatusCode::OK, "{created}");
     let resource = h.entity(created["entity_id"].as_str().unwrap()).await;
     assert_eq!(resource["title"], "会议室投影仪");
@@ -156,8 +169,9 @@ async fn imported_resources_and_relations_enter_the_ontology_only_after_approval
     assert!(relations.iter().any(|r| r["subject"] == person["entity_id"]
         && r["predicate"] == "references"
         && r["object"] == created["entity_id"]));
-    assert!(relations.iter().any(|r| r["subject"] == created["entity_id"]
-        && r["predicate"] == "derived_from"));
+    assert!(relations
+        .iter()
+        .any(|r| r["subject"] == created["entity_id"] && r["predicate"] == "derived_from"));
     let (status, task) = approve(&h, &by_action("create_task", ""), "").await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(
@@ -174,10 +188,14 @@ async fn chat_message_imports_become_follow_up_proposals() {
     let h = Harness::new().await;
     let (_, token) = h.connection("ChatGPT").await;
     let (status, outcome) = h
-        .bearer(&token, IMPORT, Some(json!({"messages":[
-            {"role":"system","content":"You are a helpful assistant"},
-            {"role":"user","content":"提醒我周三带体检报告"}
-        ]})))
+        .bearer(
+            &token,
+            IMPORT,
+            Some(json!({"messages":[
+                {"role":"system","content":"You are a helpful assistant"},
+                {"role":"user","content":"提醒我周三带体检报告"}
+            ]})),
+        )
         .await;
     assert_eq!(status, StatusCode::OK, "{outcome}");
     let proposals = proposals_of(&h, &outcome["import_id"]).await;
@@ -194,9 +212,12 @@ async fn model_routes_are_loopback_only_and_run_by_a_leased_executor() {
         "http://example.com",
     ] {
         assert_eq!(
-            h.owner("/api/agents/models", Some(json!({"title":"remote","provider":"ollama","base_url":url,"model":"m"})))
-                .await
-                .0,
+            h.owner(
+                "/api/agents/models",
+                Some(json!({"title":"remote","provider":"ollama","base_url":url,"model":"m"}))
+            )
+            .await
+            .0,
             StatusCode::BAD_REQUEST,
             "{url}"
         );
@@ -211,35 +232,57 @@ async fn model_routes_are_loopback_only_and_run_by_a_leased_executor() {
         .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(
-        h.owner("/api/agents/routes", Some(json!({"title":"bad","executor":"no-such-model"})))
-            .await
-            .0,
+        h.owner(
+            "/api/agents/routes",
+            Some(json!({"title":"bad","executor":"no-such-model"}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     let (_, token) = h.connection("n8n").await;
     let offline = h
-        .bearer(&token, IMPORT, Some(json!({"scenes":["life"],"items":[{"kind":"note","title":"家务分工"}]})))
+        .bearer(
+            &token,
+            IMPORT,
+            Some(json!({"scenes":["life"],"items":[{"kind":"note","title":"家务分工"}]})),
+        )
         .await
         .1;
     assert_eq!(offline["status"], "processed");
     let queued = h
-        .bearer(&token, IMPORT, Some(json!({"scenes":["work"],"items":[{"kind":"message","title":"整理客户反馈"}]})))
+        .bearer(
+            &token,
+            IMPORT,
+            Some(json!({"scenes":["work"],"items":[{"kind":"message","title":"整理客户反馈"}]})),
+        )
         .await
         .1;
     assert_eq!(queued["status"], "queued");
     assert_eq!(queued["executor"], "local-model");
     let (_, vault) = h.core(0).await;
     let (_, directive) = h.owner("/api/vault/publish", Some(json!({"password":PASSWORD,"confirmed":true,"expected_version":1,"id":vault["items"][0]["id"],"title":"专注深度工作","brief":"每天保留两小时不被打断的时间"}))).await;
-    h.owner("/api/self/identities", Some(json!({"statement":"我是工程师","category":"social","agent_visible":true})))
-        .await;
-    h.owner("/api/self/identities", Some(json!({"statement":"HIDDEN-SELF","category":"social"})))
-        .await;
+    h.owner(
+        "/api/self/identities",
+        Some(json!({"statement":"我是工程师","category":"social","agent_visible":true})),
+    )
+    .await;
+    h.owner(
+        "/api/self/identities",
+        Some(json!({"statement":"HIDDEN-SELF","category":"social"})),
+    )
+    .await;
     assert_eq!(
-        h.bearer(&token, "/api/agent/jobs/claim", Some(json!({}))).await.0,
+        h.bearer(&token, "/api/agent/jobs/claim", Some(json!({})))
+            .await
+            .0,
         StatusCode::FORBIDDEN
     );
     let (status, claim) = h
-        .agent("/api/agent/jobs/claim", Some(json!({"worker":"test-worker"})))
+        .agent(
+            "/api/agent/jobs/claim",
+            Some(json!({"worker":"test-worker"})),
+        )
         .await;
     assert_eq!(status, StatusCode::OK, "{claim}");
     let job = claim["job"].clone();
@@ -250,15 +293,13 @@ async fn model_routes_are_loopback_only_and_run_by_a_leased_executor() {
         assert!(text.contains(expected), "{expected}");
     }
     assert!(!text.contains("HIDDEN-SELF") && !text.contains("PRIVATE-CORE"));
-    assert!(h
-        .agent("/api/agent/jobs/claim", Some(json!({})))
-        .await
-        .1["job"]
-        .is_null());
+    assert!(h.agent("/api/agent/jobs/claim", Some(json!({}))).await.1["job"].is_null());
     let run = job["run_id"].as_str().unwrap();
     let result = format!("/api/agent/jobs/{run}/result");
     assert_eq!(
-        h.agent(&result, Some(json!({"lease":"wrong","candidates":[]}))).await.0,
+        h.agent(&result, Some(json!({"lease":"wrong","candidates":[]})))
+            .await
+            .0,
         StatusCode::CONFLICT
     );
     assert_eq!(
@@ -279,9 +320,14 @@ async fn model_routes_are_loopback_only_and_run_by_a_leased_executor() {
     assert_eq!(staged["rejected"].as_array().unwrap().len(), 2);
     let proposal = proposals_of(&h, &queued["import_id"]).await[0].clone();
     assert_eq!(proposal["properties"]["provider"], "local:qwen2.5:7b");
-    assert_eq!(proposal["properties"]["principles"][0]["title"], "专注深度工作");
     assert_eq!(
-        h.agent(&result, Some(json!({"lease":job["lease"],"candidates":[]}))).await.0,
+        proposal["properties"]["principles"][0]["title"],
+        "专注深度工作"
+    );
+    assert_eq!(
+        h.agent(&result, Some(json!({"lease":job["lease"],"candidates":[]})))
+            .await
+            .0,
         StatusCode::CONFLICT
     );
     assert_eq!(
@@ -296,11 +342,18 @@ async fn failed_runs_are_retried_then_marked_failed() {
     let (_, model) = h
         .owner("/api/agents/models", Some(json!({"title":"LM Studio","provider":"openai_compatible","base_url":"http://localhost:1234/v1","model":"local-model"})))
         .await;
-    h.owner("/api/agents/routes", Some(json!({"title":"全部走本地模型","executor":model["id"]})))
-        .await;
+    h.owner(
+        "/api/agents/routes",
+        Some(json!({"title":"全部走本地模型","executor":model["id"]})),
+    )
+    .await;
     let (_, token) = h.connection("LangChain").await;
     let queued = h
-        .bearer(&token, IMPORT, Some(json!({"items":[{"kind":"note","title":"会议纪要"}]})))
+        .bearer(
+            &token,
+            IMPORT,
+            Some(json!({"items":[{"kind":"note","title":"会议纪要"}]})),
+        )
         .await
         .1;
     for attempt in 1..=3 {
@@ -308,9 +361,12 @@ async fn failed_runs_are_retried_then_marked_failed() {
         assert_eq!(job["attempt"], attempt);
         let path = format!("/api/agent/jobs/{}/fail", job["run_id"].as_str().unwrap());
         assert_eq!(
-            h.agent(&path, Some(json!({"lease":job["lease"],"error":"model offline"})))
-                .await
-                .0,
+            h.agent(
+                &path,
+                Some(json!({"lease":job["lease"],"error":"model offline"}))
+            )
+            .await
+            .0,
             StatusCode::OK
         );
     }
@@ -327,11 +383,17 @@ async fn disabled_models_fall_back_to_offline_rules() {
     let (_, model) = h
         .owner("/api/agents/models", Some(json!({"title":"Ollama","provider":"ollama","base_url":"http://127.0.0.1:11434","model":"llama3"})))
         .await;
-    h.owner("/api/agents/routes", Some(json!({"title":"全部走本地模型","executor":model["id"]})))
-        .await;
+    h.owner(
+        "/api/agents/routes",
+        Some(json!({"title":"全部走本地模型","executor":model["id"]})),
+    )
+    .await;
     assert_eq!(
         h.owner(
-            &format!("/api/agents/config/{}/status", model["id"].as_str().unwrap()),
+            &format!(
+                "/api/agents/config/{}/status",
+                model["id"].as_str().unwrap()
+            ),
             Some(json!({"status":"disabled","expected_version":1}))
         )
         .await
@@ -340,10 +402,17 @@ async fn disabled_models_fall_back_to_offline_rules() {
     );
     let (_, token) = h.connection("Coze").await;
     let outcome = h
-        .bearer(&token, IMPORT, Some(json!({"items":[{"kind":"note","title":"读书清单"}]})))
+        .bearer(
+            &token,
+            IMPORT,
+            Some(json!({"items":[{"kind":"note","title":"读书清单"}]})),
+        )
         .await
         .1;
     assert_eq!(outcome["status"], "processed");
     let import = h.entity(outcome["import_id"].as_str().unwrap()).await;
-    assert_eq!(import["properties"]["route"]["note"], "规则指向的本地模型不可用，已改用离线规则");
+    assert_eq!(
+        import["properties"]["route"]["note"],
+        "规则指向的本地模型不可用，已改用离线规则"
+    );
 }

@@ -51,7 +51,8 @@ pub const WORLDS: &[(&str, &str)] = &[
     ("physical", "物理世界"),
 ];
 /// How the owner values a thing (from the source paper); independent of worlds.
-pub const VALUE_AXES: &[(&str, &str)] = &[("need", "需要"), ("desire", "欲望"), ("existence", "存在")];
+pub const VALUE_AXES: &[(&str, &str)] =
+    &[("need", "需要"), ("desire", "欲望"), ("existence", "存在")];
 /// Which part of life a thing belongs to; independent of worlds and value axes.
 pub const SCENES: &[(&str, &str, &str)] = &[
     ("self", "自我", "自我认知、自我关系与个人原则"),
@@ -67,9 +68,21 @@ pub const SCENES: &[(&str, &str, &str)] = &[
 /// ontology extended with commitments, reified relations and observations.
 pub const CATEGORIES: &[(&str, &str, &str)] = &[
     ("agent", "主体", "能够行动或承担关系的一方（REA：Agent）"),
-    ("resource", "资源", "可被使用、维护或消耗的对象（REA：Resource）"),
-    ("event", "事件", "已经发生、只追加不改写的记录（REA：Event）"),
-    ("commitment", "承诺", "尚未兑现的计划、订单与待决建议（REA：Commitment）"),
+    (
+        "resource",
+        "资源",
+        "可被使用、维护或消耗的对象（REA：Resource）",
+    ),
+    (
+        "event",
+        "事件",
+        "已经发生、只追加不改写的记录（REA：Event）",
+    ),
+    (
+        "commitment",
+        "承诺",
+        "尚未兑现的计划、订单与待决建议（REA：Commitment）",
+    ),
     ("relation", "关系", "被具体化的关系：与自我、与他人、与身份"),
     ("observation", "观察", "本人记录的生理与心理指标，不是诊断"),
 ];
@@ -77,9 +90,17 @@ pub const CATEGORIES: &[(&str, &str, &str)] = &[
 pub const LAYERS: &[(&str, &str, &str)] = &[
     ("self", "自我关系", "本人与自我：描述、测量、支持与影响"),
     ("external", "外部关系", "本人与他人、组织之间的关系与互动"),
-    ("erp", "资源关系", "物料、库位、供应商、订单、收货与付款"),
-    ("digital", "数字关系", "任务、知识、执行方向与会话之间的关联"),
-    ("provenance", "来源追溯", "建议、导入与运行的来源，仅由系统建立"),
+    ("prp", "资源关系", "物料、库位、供应商、订单、收货与付款"),
+    (
+        "digital",
+        "数字关系",
+        "任务、知识、执行方向与会话之间的关联",
+    ),
+    (
+        "provenance",
+        "来源追溯",
+        "建议、导入与运行的来源，仅由系统建立",
+    ),
 ];
 
 pub struct ClassDef {
@@ -130,34 +151,199 @@ const fn sig(domain: &'static [&'static str], range: &'static [&'static str]) ->
 /// Classes stored in the business `entities` table. The mental vault classes are
 /// deliberately absent, so generic entity APIs can never create or read them.
 pub const CLASSES: &[ClassDef] = &[
-    class("self_profile", "自我本体", "agent", &["self"], &["self"], "owner"),
-    class("person", "人物", "agent", &["physical"], &["social"], "owner"),
-    class("supplier", "供应商", "agent", &["physical"], &["finance"], "owner"),
-    class("identity", "自我认同", "relation", &["self", "mental"], &["self"], "owner"),
-    class("self_relation", "自我关系", "relation", &["self"], &["self"], "owner"),
-    class("relationship", "人际关系", "relation", &["self"], &["social"], "owner"),
-    class("body_metric", "生理自我指标", "observation", &["self", "physical"], &["health"], "owner"),
-    class("psychological_metric", "心理自我认定", "observation", &["self", "mental"], &["self"], "owner"),
-    class("interaction", "互动记录", "event", &["self"], &["social"], "owner"),
-    class("directive", "执行方向", "resource", &["digital"], &[], "owner"),
+    class(
+        "self_profile",
+        "自我本体",
+        "agent",
+        &["self"],
+        &["self"],
+        "owner",
+    ),
+    class(
+        "person",
+        "人物",
+        "agent",
+        &["physical"],
+        &["social"],
+        "owner",
+    ),
+    class(
+        "supplier",
+        "供应商",
+        "agent",
+        &["physical"],
+        &["finance"],
+        "owner",
+    ),
+    class(
+        "identity",
+        "自我认同",
+        "relation",
+        &["self", "mental"],
+        &["self"],
+        "owner",
+    ),
+    class(
+        "self_relation",
+        "自我关系",
+        "relation",
+        &["self"],
+        &["self"],
+        "owner",
+    ),
+    class(
+        "relationship",
+        "人际关系",
+        "relation",
+        &["self"],
+        &["social"],
+        "owner",
+    ),
+    class(
+        "body_metric",
+        "生理自我指标",
+        "observation",
+        &["self", "physical"],
+        &["health"],
+        "owner",
+    ),
+    class(
+        "psychological_metric",
+        "心理自我认定",
+        "observation",
+        &["self", "mental"],
+        &["self"],
+        "owner",
+    ),
+    class(
+        "interaction",
+        "互动记录",
+        "event",
+        &["self"],
+        &["social"],
+        "owner",
+    ),
+    class(
+        "directive",
+        "执行方向",
+        "resource",
+        &["digital"],
+        &[],
+        "owner",
+    ),
     class("channel", "会话", "resource", &["digital"], &[], "owner"),
     class("message", "消息", "event", &["digital"], &[], "owner"),
-    class("note", "知识条目", "resource", &["digital"], &["learning"], "owner"),
-    class("proposal", "建议", "commitment", &["digital"], &[], "agent-propose"),
-    class("task", "任务 / 工单", "commitment", &["digital", "physical"], &[], "owner-confirm"),
-    class("resource", "资源 / 物料", "resource", &["physical"], &["life"], "owner-confirm"),
-    class("location", "库位", "resource", &["physical"], &["life"], "owner"),
-    class("stock_movement", "库存流水", "event", &["physical"], &["life"], "owner-confirm"),
-    class("cash_entry", "现金流水", "event", &["physical"], &["finance"], "owner-confirm"),
-    class("purchase_order", "采购订单", "commitment", &["physical"], &["finance"], "owner-confirm"),
-    class("purchase_order_line", "采购订单行", "commitment", &["physical"], &["finance"], "owner-confirm"),
-    class("agent_import", "Agent 导入", "event", &["digital"], &[], "agent-propose"),
-    class("agent_run", "路由运行", "event", &["digital"], &[], "system"),
-    class("model_endpoint", "本地模型", "resource", &["digital"], &[], "owner"),
-    class("route_rule", "路由规则", "resource", &["digital"], &[], "owner"),
+    class(
+        "note",
+        "知识条目",
+        "resource",
+        &["digital"],
+        &["learning"],
+        "owner",
+    ),
+    class(
+        "proposal",
+        "建议",
+        "commitment",
+        &["digital"],
+        &[],
+        "agent-propose",
+    ),
+    class(
+        "task",
+        "任务 / 工单",
+        "commitment",
+        &["digital", "physical"],
+        &[],
+        "owner-confirm",
+    ),
+    class(
+        "resource",
+        "资源 / 物料",
+        "resource",
+        &["physical"],
+        &["life"],
+        "owner-confirm",
+    ),
+    class(
+        "location",
+        "库位",
+        "resource",
+        &["physical"],
+        &["life"],
+        "owner",
+    ),
+    class(
+        "stock_movement",
+        "库存流水",
+        "event",
+        &["physical"],
+        &["life"],
+        "owner-confirm",
+    ),
+    class(
+        "cash_entry",
+        "现金流水",
+        "event",
+        &["physical"],
+        &["finance"],
+        "owner-confirm",
+    ),
+    class(
+        "purchase_order",
+        "采购订单",
+        "commitment",
+        &["physical"],
+        &["finance"],
+        "owner-confirm",
+    ),
+    class(
+        "purchase_order_line",
+        "采购订单行",
+        "commitment",
+        &["physical"],
+        &["finance"],
+        "owner-confirm",
+    ),
+    class(
+        "agent_import",
+        "Agent 导入",
+        "event",
+        &["digital"],
+        &[],
+        "agent-propose",
+    ),
+    class(
+        "agent_run",
+        "路由运行",
+        "event",
+        &["digital"],
+        &[],
+        "system",
+    ),
+    class(
+        "model_endpoint",
+        "本地模型",
+        "resource",
+        &["digital"],
+        &[],
+        "owner",
+    ),
+    class(
+        "route_rule",
+        "路由规则",
+        "resource",
+        &["digital"],
+        &[],
+        "owner",
+    ),
 ];
 /// Encrypted mental vault classes (shown in the schema, never stored as entities).
-pub const VAULT_CLASSES: &[(&str, &str)] = &[("principle", "原则"), ("goal", "目标"), ("reflection", "反思")];
+pub const VAULT_CLASSES: &[(&str, &str)] = &[
+    ("principle", "原则"),
+    ("goal", "目标"),
+    ("reflection", "反思"),
+];
 
 const REFERABLE: &[&str] = &[
     "note",
@@ -174,7 +360,12 @@ const REFERABLE: &[&str] = &[
     "body_metric",
     "psychological_metric",
 ];
-const SELF_ASPECTS: &[&str] = &["body_metric", "psychological_metric", "self_relation", "identity"];
+const SELF_ASPECTS: &[&str] = &[
+    "body_metric",
+    "psychological_metric",
+    "self_relation",
+    "identity",
+];
 
 pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
@@ -188,7 +379,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "uses",
         label: "使用",
-        layer: "erp",
+        layer: "prp",
         owner_settable: true,
         agent_proposable: true,
         signatures: &[sig(&["task"], &["resource"])],
@@ -208,7 +399,10 @@ pub const PREDICATES: &[PredicateDef] = &[
         owner_settable: false,
         agent_proposable: false,
         signatures: &[
-            sig(&["proposal"], &["message", "resource", "relationship", "agent_import"]),
+            sig(
+                &["proposal"],
+                &["message", "resource", "relationship", "agent_import"],
+            ),
             sig(
                 &["task", "resource", "note", "person", "supplier", "location"],
                 &["proposal"],
@@ -226,7 +420,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "records",
         label: "记录",
-        layer: "erp",
+        layer: "prp",
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["stock_movement"], &["resource"])],
@@ -246,7 +440,13 @@ pub const PREDICATES: &[PredicateDef] = &[
         owner_settable: true,
         agent_proposable: false,
         signatures: &[sig(
-            &["self_relation", "body_metric", "psychological_metric", "identity", "relationship"],
+            &[
+                "self_relation",
+                "body_metric",
+                "psychological_metric",
+                "identity",
+                "relationship",
+            ],
             &["self_profile"],
         )],
     },
@@ -268,8 +468,20 @@ pub const PREDICATES: &[PredicateDef] = &[
         owner_settable: true,
         agent_proposable: false,
         signatures: &[sig(
-            &["resource", "task", "note", "directive", "relationship", "person"],
-            &["self_profile", "body_metric", "psychological_metric", "identity"],
+            &[
+                "resource",
+                "task",
+                "note",
+                "directive",
+                "relationship",
+                "person",
+            ],
+            &[
+                "self_profile",
+                "body_metric",
+                "psychological_metric",
+                "identity",
+            ],
         )],
     },
     PredicateDef {
@@ -309,7 +521,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "supplies",
         label: "供应",
-        layer: "erp",
+        layer: "prp",
         owner_settable: true,
         agent_proposable: true,
         signatures: &[sig(&["supplier"], &["resource", "purchase_order"])],
@@ -317,7 +529,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "contains",
         label: "包含",
-        layer: "erp",
+        layer: "prp",
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["purchase_order"], &["purchase_order_line"])],
@@ -325,7 +537,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "orders",
         label: "订购",
-        layer: "erp",
+        layer: "prp",
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["purchase_order_line"], &["resource"])],
@@ -333,7 +545,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "receives",
         label: "收货",
-        layer: "erp",
+        layer: "prp",
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["stock_movement"], &["purchase_order_line"])],
@@ -341,7 +553,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "pays",
         label: "付款",
-        layer: "erp",
+        layer: "prp",
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["cash_entry"], &["purchase_order"])],
@@ -349,7 +561,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "stored_at",
         label: "存放于",
-        layer: "erp",
+        layer: "prp",
         owner_settable: true,
         agent_proposable: true,
         signatures: &[sig(&["resource"], &["location"])],
@@ -357,7 +569,7 @@ pub const PREDICATES: &[PredicateDef] = &[
     PredicateDef {
         id: "located_in",
         label: "位于",
-        layer: "erp",
+        layer: "prp",
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["location"], &["location"])],
@@ -528,8 +740,16 @@ mod tests {
         for (i, c) in CLASSES.iter().enumerate() {
             assert!(identifier(c.id), "{}", c.id);
             assert!(CLASSES[..i].iter().all(|o| o.id != c.id), "{}", c.id);
-            assert!(!c.worlds.is_empty() && c.worlds.iter().all(|w| WORLDS.iter().any(|(id, _)| id == w)));
-            assert!(c.scenes.iter().all(|s| SCENES.iter().any(|(id, ..)| id == s)));
+            assert!(
+                !c.worlds.is_empty()
+                    && c.worlds
+                        .iter()
+                        .all(|w| WORLDS.iter().any(|(id, _)| id == w))
+            );
+            assert!(c
+                .scenes
+                .iter()
+                .all(|s| SCENES.iter().any(|(id, ..)| id == s)));
             assert!(CATEGORIES.iter().any(|(id, ..)| *id == c.category));
         }
         for (i, p) in PREDICATES.iter().enumerate() {
@@ -561,7 +781,14 @@ mod tests {
         assert!(relation_valid("stock_movement", "records", "resource"));
         assert!(relation_valid("relationship", "involves", "person"));
         assert!(!relation_valid("task", "unknown", "resource"));
-        for id in ["derived_from", "belongs_to", "records", "receives", "pays", "processes"] {
+        for id in [
+            "derived_from",
+            "belongs_to",
+            "records",
+            "receives",
+            "pays",
+            "processes",
+        ] {
             assert!(!predicate_def(id).unwrap().owner_settable, "{id}");
         }
     }

@@ -2790,7 +2790,7 @@ dd {
 .tag { padding:3px 7px; border-radius:999px; background:#eef5f1; color:var(--green); font-size:10px; }
 @media (max-width: 760px) { .intro-panel, .self-grid { grid-template-columns:1fr; display:grid; } .metric-summary { text-align:left; } }
 
-/* 0.4: scenes, self ontology, relations, agent gateway and ERP */
+/* 0.4: scenes, self ontology, relations, agent gateway and PRP */
 .panel {
   background: var(--surface);
   border: 1px solid var(--line);

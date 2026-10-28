@@ -115,7 +115,13 @@ pub fn offline_candidates(items: &[ImportItem], import_scenes: &[String]) -> Vec
         })
         .collect()
 }
-fn complete(store: &Store, mut run: Entity, mut import: Entity, summary: &str, staged: &Staged) -> Result<()> {
+fn complete(
+    store: &Store,
+    mut run: Entity,
+    mut import: Entity,
+    summary: &str,
+    staged: &Staged,
+) -> Result<()> {
     run.status = "completed".into();
     run.properties["summary"] = json!(summary);
     run.properties["proposals_created"] = json!(staged.created);
@@ -128,12 +134,21 @@ fn complete(store: &Store, mut run: Entity, mut import: Entity, summary: &str, s
     Ok(())
 }
 /// Create the processing run for an import; the offline rules complete it at once.
-pub fn dispatch(store: &Store, import: &Entity, items: &[ImportItem], route: &router::Route) -> Result<Value> {
+pub fn dispatch(
+    store: &Store,
+    import: &Entity,
+    items: &[ImportItem],
+    route: &router::Route,
+) -> Result<Value> {
     let endpoint = route.endpoint.as_ref();
     let model = endpoint
         .map(|e| e.properties["model"].clone())
         .unwrap_or(json!(OFFLINE));
-    let rule_title = route.rule.as_ref().map(|r| r.title.clone()).unwrap_or_default();
+    let rule_title = route
+        .rule
+        .as_ref()
+        .map(|r| r.title.clone())
+        .unwrap_or_default();
     let run = store.insert(
         "agent_run",
         &format!("路由：{}", import.title),
@@ -335,7 +350,10 @@ pub async fn result(
     let inner = state.lock()?;
     let staged = inner.store.transaction(|store| {
         let (run, import) = leased(store, &id, &body.lease)?;
-        let provider = format!("local:{}", run.properties["model"].as_str().unwrap_or("model"));
+        let provider = format!(
+            "local:{}",
+            run.properties["model"].as_str().unwrap_or("model")
+        );
         let staged = analysis::stage_candidates(store, &import, &run, &provider, &body.candidates)?;
         complete(store, run, import, &body.summary, &staged)?;
         store.audit("executor", "agent.run_completed", &id)?;
@@ -376,8 +394,13 @@ fn context_entities(store: &Store) -> Result<Vec<Entity>> {
             "directive" => e.status == "active",
             "resource" => true,
             "message" => e.properties["role"] == "owner",
-            "self_profile" | "body_metric" | "psychological_metric" | "identity"
-            | "self_relation" | "relationship" | "person" => e.properties["agent_visible"] == true,
+            "self_profile"
+            | "body_metric"
+            | "psychological_metric"
+            | "identity"
+            | "self_relation"
+            | "relationship"
+            | "person" => e.properties["agent_visible"] == true,
             _ => false,
         })
         .collect())
@@ -426,7 +449,14 @@ pub async fn proposal(
         return Err(Error::Conflict("此版本已存在建议".into()));
     }
     let p = inner.store.transaction(|store| {
-        analysis::proposal(store, &source, &body.title, &body.rationale, "local-agent", "local-agent")
+        analysis::proposal(
+            store,
+            &source,
+            &body.title,
+            &body.rationale,
+            "local-agent",
+            "local-agent",
+        )
     })?;
     Ok(Json(json!(p)))
 }

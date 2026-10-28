@@ -288,7 +288,7 @@ test("owner-controlled three-world workflow, persistence and responsive screens"
   expect(errors).toEqual([]);
 });
 
-test("self ontology, relations, agent gateway and ERP purchasing", async ({
+test("self ontology, relations, agent gateway and PRP purchasing", async ({
   page,
   playwright,
 }) => {

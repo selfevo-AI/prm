@@ -166,7 +166,9 @@ pub fn normalize(request: ImportRequest) -> Result<(Vec<ImportItem>, &'static st
                 && item.attributes.iter().all(|(key, value)| {
                     !key.is_empty()
                         && key.len() <= 40
-                        && key.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
+                        && key
+                            .bytes()
+                            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_')
                         && value.chars().count() <= 400
                 }),
             "导入属性不合法",
@@ -279,13 +281,25 @@ mod tests {
     #[test]
     fn malformed_imports_are_rejected() {
         assert!(normalize(request(json!({}))).is_err());
-        assert!(normalize(request(json!({"items": [{"kind": "payment", "title": "x"}]}))).is_err());
-        assert!(normalize(request(json!({"items": [{"kind": "relation", "title": "", "subject": "a"}]}))).is_err());
+        assert!(normalize(request(
+            json!({"items": [{"kind": "payment", "title": "x"}]})
+        ))
+        .is_err());
+        assert!(normalize(request(
+            json!({"items": [{"kind": "relation", "title": "", "subject": "a"}]})
+        ))
+        .is_err());
         assert!(normalize(request(json!({"items": [
             {"ref": "a", "kind": "note", "title": "x"}, {"ref": "a", "kind": "note", "title": "y"}
         ]})))
         .is_err());
-        assert!(normalize(request(json!({"items": [{"kind": "note", "title": "x", "attributes": {"Bad Key": "v"}}]}))).is_err());
-        assert!(serde_json::from_value::<ImportRequest>(json!({"items": [], "command": "pay"})).is_err());
+        assert!(normalize(request(
+            json!({"items": [{"kind": "note", "title": "x", "attributes": {"Bad Key": "v"}}]})
+        ))
+        .is_err());
+        assert!(
+            serde_json::from_value::<ImportRequest>(json!({"items": [], "command": "pay"}))
+                .is_err()
+        );
     }
 }

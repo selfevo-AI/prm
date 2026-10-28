@@ -26,7 +26,7 @@ PRM 是一个基于本体论框架的个人信息、Resource（资源）与 Rela
 | 关系 Relation | 自我认同、自我关系、人际关系 |
 | 观察 Observation | 生理自我指标、心理自我认定 |
 
-关系（谓词）按层组织：自我关系、外部关系、资源关系（ERP）、数字关系、来源追溯。所有类与谓词定义在 `src/ontology.rs` 的注册表中，是唯一来源：数据库约束、后端校验和界面展示都从它派生。
+关系（谓词）按层组织：自我关系、外部关系、资源关系（PRP）、数字关系、来源追溯。所有类与谓词定义在 `src/ontology.rs` 的注册表中，是唯一来源：数据库约束、后端校验和界面展示都从它派生。
 
 ## 与原文的对应
 
@@ -52,7 +52,7 @@ flowchart TB
     S --> G[认证与权限边界]
     G --> V[思维库：本人解锁、重新确认]
     G --> SELF[自我本体：生理/心理指标、认同、自我关系、人际关系]
-    G --> ERP[物理资源 ERP：物料、库位、供应商、采购、收货、付款]
+    G --> PRP[物理资源 PRP：物料、库位、供应商、采购、收货、付款]
     G --> DEC[决策中心：统一建议队列]
     V -->|本人发布| DIR[执行方向 = 核心原则]
     X[外部 Agent：HTTP / MCP] -->|连接令牌，只能导入| GW[Agent 网关]
@@ -80,11 +80,11 @@ flowchart TB
 - `src/auth.rs`、`src/crypto.rs`、`src/vault.rs`、`src/security.rs`：账户、加密思维库、本人发布、只读授权与请求签名。
 - `src/self_model.rs`：自我本体——量表目录（只含元数据与出处）、测评记录、自我认同、自我关系、Agent 可见性、核心原则预览。
 - `src/relationships.rs`：与他人的关系——人物、人际关系（IOS 亲密度、RAS 满意度、联系节奏）、互动流水。
-- `src/erp.rs`：物理资源 ERP——物料主数据、库位、供应商、采购订单状态机、收货、付款、库存与现金流水。
+- `src/prp.rs`：物理资源 PRP（个人资源计划）——物料主数据、库位、供应商、采购订单状态机、收货、付款、库存与现金流水。
 - `src/operations.rs`：通用实体创建（本人表单与采纳的候选共用同一套校验）、任务、执行方向撤回、关系、导出、演示数据。
 - `src/analysis.rs`：离线分析规则、统一建议队列、候选校验与本人采纳。
 - `src/agents/`：`credentials`（外部 Agent 令牌）、`gateway`（导入接口）、`router`（本地模型、路由规则、核心原则上下文）、`executor`（离线规则执行与执行器任务接口）。
-- `web/`：中文界面。`App.tsx` 是外壳（导航、场景筛选、对话框），`web/pages/` 各页面，`web/dialogs/` ERP 与关系对话框，`web/Editor.tsx` 通用对话框。
+- `web/`：中文界面。`App.tsx` 是外壳（导航、场景筛选、对话框），`web/pages/` 各页面，`web/dialogs/` PRP 与关系对话框，`web/Editor.tsx` 通用对话框。
 - `scripts/prm-model-worker.mjs`：本地模型执行器；`scripts/prm-mcp.mjs`：MCP 工具桥；`docs/agent-openapi.json`：HTTP 导入接口说明。
 
 ## 本人驱动的闭环

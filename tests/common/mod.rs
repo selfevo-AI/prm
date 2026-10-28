@@ -51,7 +51,12 @@ impl Harness {
     pub async fn agent(&self, path: &str, body: Option<Value>) -> (StatusCode, Value) {
         self.bearer(AGENT, path, body).await
     }
-    pub async fn bearer(&self, token: &str, path: &str, body: Option<Value>) -> (StatusCode, Value) {
+    pub async fn bearer(
+        &self,
+        token: &str,
+        path: &str,
+        body: Option<Value>,
+    ) -> (StatusCode, Value) {
         let (s, b, _) = send(&self.router, path, body, None, Some(token)).await;
         (s, b)
     }

@@ -1,4 +1,4 @@
-//! Relations with other people: the personal-CRM counterpart of the ERP side.
+//! Relations with other people: the personal-CRM counterpart of the PRP side.
 //! A relationship is a reified relation between the self and a person, with
 //! owner-rated closeness (IOS) and satisfaction (RAS) and an interaction ledger.
 use crate::{
@@ -56,7 +56,12 @@ fn relationship_type(id: &str) -> Result<&'static (&'static str, &'static str, &
         .find(|(t, ..)| *t == id)
         .ok_or(Error::Bad("关系类型不合法".into()))
 }
-fn check_measures(closeness: i64, satisfaction: Option<f64>, interval: i64, notes: &str) -> Result<()> {
+fn check_measures(
+    closeness: i64,
+    satisfaction: Option<f64>,
+    interval: i64,
+    notes: &str,
+) -> Result<()> {
     require((1..=7).contains(&closeness), "亲密度（IOS）应为 1–7")?;
     require(
         satisfaction.is_none_or(|s| s.is_finite() && (1.0..=5.0).contains(&s)),
@@ -314,10 +319,25 @@ mod tests {
     #[test]
     fn contact_rhythm_is_due_only_when_exceeded() {
         let today = NaiveDate::from_ymd_opt(2026, 3, 1).unwrap();
-        assert_eq!(contact_due(&relationship("2026-02-01", 14, "active"), today), Some(28));
-        assert_eq!(contact_due(&relationship("2026-02-25", 14, "active"), today), None);
-        assert_eq!(contact_due(&relationship("2026-02-01", 0, "active"), today), None);
-        assert_eq!(contact_due(&relationship("2026-02-01", 14, "paused"), today), None);
-        assert_eq!(contact_due(&relationship("", 30, "active"), today), Some(59));
+        assert_eq!(
+            contact_due(&relationship("2026-02-01", 14, "active"), today),
+            Some(28)
+        );
+        assert_eq!(
+            contact_due(&relationship("2026-02-25", 14, "active"), today),
+            None
+        );
+        assert_eq!(
+            contact_due(&relationship("2026-02-01", 0, "active"), today),
+            None
+        );
+        assert_eq!(
+            contact_due(&relationship("2026-02-01", 14, "paused"), today),
+            None
+        );
+        assert_eq!(
+            contact_due(&relationship("", 30, "active"), today),
+            Some(59)
+        );
     }
 }

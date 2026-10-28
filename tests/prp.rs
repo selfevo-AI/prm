@@ -5,17 +5,26 @@ use common::*;
 use serde_json::{json, Value};
 
 async fn order_action(h: &Harness, order: &str, action: &str, body: Value) -> (StatusCode, Value) {
-    h.owner(&format!("/api/purchase-orders/{order}/{action}"), Some(body))
-        .await
+    h.owner(
+        &format!("/api/purchase-orders/{order}/{action}"),
+        Some(body),
+    )
+    .await
 }
 
 #[tokio::test]
 async fn purchase_orders_follow_their_lifecycle_and_post_stock_and_cash() {
     let h = Harness::new().await;
-    let supplier = h.create("supplier", "家居耗材店", json!({"contact":"王先生"})).await;
+    let supplier = h
+        .create("supplier", "家居耗材店", json!({"contact":"王先生"}))
+        .await;
     let room = h.create("location", "储物间", json!({"code":"A-01"})).await;
     let shelf = h
-        .create("location", "储物间 · 二层架", json!({"parent_id":room["id"]}))
+        .create(
+            "location",
+            "储物间 · 二层架",
+            json!({"parent_id":room["id"]}),
+        )
         .await;
     let filter = h
         .create("resource", "净水滤芯", json!({"unit":"个","location_id":shelf["id"],"minimum":2,"reorder_qty":4,"supplier_id":supplier["id"]}))
@@ -36,12 +45,23 @@ async fn purchase_orders_follow_their_lifecycle_and_post_stock_and_cash() {
         );
     }
     let order = h
-        .create("purchase_order", "十月补货", json!({"supplier_id":supplier["id"],"expected_date":"2026-11-01"}))
+        .create(
+            "purchase_order",
+            "十月补货",
+            json!({"supplier_id":supplier["id"],"expected_date":"2026-11-01"}),
+        )
         .await;
     assert_eq!(order["status"], "draft");
     let id = order["id"].as_str().unwrap();
     assert_eq!(
-        order_action(&h, id, "status", json!({"status":"ordered","expected_version":1})).await.0,
+        order_action(
+            &h,
+            id,
+            "status",
+            json!({"status":"ordered","expected_version":1})
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     let line = h
@@ -50,11 +70,22 @@ async fn purchase_orders_follow_their_lifecycle_and_post_stock_and_cash() {
     let current = h.entity(id).await;
     assert_eq!(current["properties"]["total_cents"], 34500);
     assert_eq!(current["version"], 2);
-    assert!(h.relations().await.iter().any(|r| r["subject"] == line["id"]
-        && r["predicate"] == "orders"
-        && r["object"] == filter["id"]));
+    assert!(h
+        .relations()
+        .await
+        .iter()
+        .any(|r| r["subject"] == line["id"]
+            && r["predicate"] == "orders"
+            && r["object"] == filter["id"]));
     assert_eq!(
-        order_action(&h, id, "status", json!({"status":"ordered","expected_version":2})).await.0,
+        order_action(
+            &h,
+            id,
+            "status",
+            json!({"status":"ordered","expected_version":2})
+        )
+        .await
+        .0,
         StatusCode::OK
     );
     assert_eq!(
@@ -63,9 +94,7 @@ async fn purchase_orders_follow_their_lifecycle_and_post_stock_and_cash() {
             .0,
         StatusCode::BAD_REQUEST
     );
-    let receive = |quantity: i64, version: i64| {
-        json!({"lines":[{"line_id":line["id"],"quantity":quantity}],"expected_version":version})
-    };
+    let receive = |quantity: i64, version: i64| json!({"lines":[{"line_id":line["id"],"quantity":quantity}],"expected_version":version});
     assert_eq!(
         order_action(&h, id, "receive", receive(6, 3)).await.0,
         StatusCode::BAD_REQUEST
@@ -80,32 +109,52 @@ async fn purchase_orders_follow_their_lifecycle_and_post_stock_and_cash() {
     );
     let partial = h.entity(id).await;
     assert_eq!(partial["status"], "partially_received");
-    assert_eq!(h.entity(filter["id"].as_str().unwrap()).await["properties"]["quantity"], 3);
+    assert_eq!(
+        h.entity(filter["id"].as_str().unwrap()).await["properties"]["quantity"],
+        3
+    );
     let movement = h.entities("stock_movement").await[0].clone();
     assert_eq!(movement["properties"]["movement_type"], "receipt");
     assert_eq!(movement["properties"]["purchase_order_line_id"], line["id"]);
-    assert!(h.relations().await.iter().any(|r| r["subject"] == movement["id"]
-        && r["predicate"] == "receives"
-        && r["object"] == line["id"]));
+    assert!(h
+        .relations()
+        .await
+        .iter()
+        .any(|r| r["subject"] == movement["id"]
+            && r["predicate"] == "receives"
+            && r["object"] == line["id"]));
     assert_eq!(
-        order_action(&h, id, "status", json!({"status":"cancelled","expected_version":4})).await.0,
+        order_action(
+            &h,
+            id,
+            "status",
+            json!({"status":"cancelled","expected_version":4})
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
-    let pay = |amount: i64, version: i64| {
-        json!({"amount_cents":amount,"date":"2026-10-27","expected_version":version})
-    };
+    let pay = |amount: i64, version: i64| json!({"amount_cents":amount,"date":"2026-10-27","expected_version":version});
     assert_eq!(
         order_action(&h, id, "pay", pay(50000, 4)).await.0,
         StatusCode::BAD_REQUEST
     );
-    assert_eq!(order_action(&h, id, "pay", pay(34500, 4)).await.0, StatusCode::OK);
-    assert_eq!(order_action(&h, id, "pay", pay(1, 5)).await.0, StatusCode::BAD_REQUEST);
+    assert_eq!(
+        order_action(&h, id, "pay", pay(34500, 4)).await.0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        order_action(&h, id, "pay", pay(1, 5)).await.0,
+        StatusCode::BAD_REQUEST
+    );
     let cash = h.entities("cash_entry").await[0].clone();
     assert_eq!(cash["properties"]["purchase_order_id"], id);
     assert_eq!(cash["properties"]["direction"], "expense");
-    assert!(h.relations().await.iter().any(|r| r["subject"] == cash["id"]
-        && r["predicate"] == "pays"
-        && r["object"] == id));
+    assert!(h
+        .relations()
+        .await
+        .iter()
+        .any(|r| r["subject"] == cash["id"] && r["predicate"] == "pays" && r["object"] == id));
     assert_eq!(
         order_action(&h, id, "receive", receive(2, 5)).await.0,
         StatusCode::OK
@@ -113,9 +162,19 @@ async fn purchase_orders_follow_their_lifecycle_and_post_stock_and_cash() {
     let received = h.entity(id).await;
     assert_eq!(received["status"], "received");
     assert_eq!(received["properties"]["paid_cents"], 34500);
-    assert_eq!(h.entity(line["id"].as_str().unwrap()).await["status"], "received");
     assert_eq!(
-        order_action(&h, id, "status", json!({"status":"closed","expected_version":6})).await.0,
+        h.entity(line["id"].as_str().unwrap()).await["status"],
+        "received"
+    );
+    assert_eq!(
+        order_action(
+            &h,
+            id,
+            "status",
+            json!({"status":"closed","expected_version":6})
+        )
+        .await
+        .0,
         StatusCode::OK
     );
     assert_eq!(h.entity(id).await["status"], "closed");
@@ -146,7 +205,10 @@ async fn reorder_and_warranty_rules_produce_reviewable_proposals() {
         .find(|p| p["properties"]["rule"] == "low_stock")
         .unwrap();
     let reason = low["properties"]["rationale"].as_str().unwrap();
-    assert!(reason.contains("建议补货量 6 个") && reason.contains("社区五金店"), "{reason}");
+    assert!(
+        reason.contains("建议补货量 6 个") && reason.contains("社区五金店"),
+        "{reason}"
+    );
     assert!(proposals
         .iter()
         .any(|p| p["properties"]["rule"] == "warranty" && p["title"] == "保修检查：洗衣机"));
@@ -160,7 +222,10 @@ async fn reorder_and_warranty_rules_produce_reviewable_proposals() {
 async fn stock_movement_types_must_match_their_direction() {
     let h = Harness::new().await;
     let resource = h.resource().await;
-    let path = format!("/api/resources/{}/movement", resource["id"].as_str().unwrap());
+    let path = format!(
+        "/api/resources/{}/movement",
+        resource["id"].as_str().unwrap()
+    );
     for (delta, movement_type) in [(-1, "receipt"), (2, "issue"), (2, "gift")] {
         assert_eq!(
             h.owner(&path, Some(json!({"delta":delta,"reason":"x","expected_version":1,"movement_type":movement_type})))

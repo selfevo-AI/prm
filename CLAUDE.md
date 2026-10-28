@@ -24,7 +24,7 @@ $env:Path = "$env:USERPROFILE\.cargo\bin;D:\prm\.tools\w64devkit\bin;$env:Path"
 .\scripts\Start-Postgres.ps1        # starts .tools/pgsql on 127.0.0.1:55432, sets $env:PRM_DATABASE_URL for this process
 $env:PRM_DATABASE_SCHEMA = $null    # tests need a per-tempdir schema
 cargo test --all-targets
-cargo test --test agents_and_router model_routes   # one integration test (files: security_and_workflows, self_and_relationships, agents_and_router, erp)
+cargo test --test agents_and_router model_routes   # one integration test (files: security_and_workflows, self_and_relationships, agents_and_router, prp)
 cargo test --lib                                   # registry/catalog/router/gateway unit tests (still need PostgreSQL for lib::timeout_tests)
 cargo clippy --all-targets -- -D warnings
 cargo fmt
@@ -62,7 +62,7 @@ cargo build --locked
 - `relation_valid()`, `worlds()`, `scenes_for()` and `schema()` (sent to the UI) are derived from these. `Store::open` runs `sync_sql()` after `migrations/002_postgresql.sql` to sync `ontology_classes` and `relations_predicate_check`, so don't hand-edit those lists in SQL.
 - **Adding a kind:**
   1. Add a `ClassDef`.
-  2. If owners or agents may create it, add it to `operations::OWNER_CREATABLE` / `AGENT_CREATABLE` and to the `operations::normalize` match. Put the validator in the owning module (`erp.rs`, `relationships.rs`, …).
+  2. If owners or agents may create it, add it to `operations::OWNER_CREATABLE` / `AGENT_CREATABLE` and to the `operations::normalize` match. Put the validator in the owning module (`prp.rs`, `relationships.rs`, …).
   3. Add a zh-CN entry to `labels` in `web/api.ts`.
 - Only additive changes are safe for existing data: the sync re-adds the predicate CHECK, which fails if stored rows use a removed predicate.
 - The three facets are independent: `worlds`, value axes, and `scenes` (the 8 life scenes; `entities.scenes` is a TEXT JSON column).
@@ -80,7 +80,7 @@ cargo build --locked
 - `operations.rs`: generic creation.
   - `normalize(kind, props)` validates and `insert_entity` inserts plus the implied relations (supplies, stored_at, located_in, contains/orders, implements). Owner creates and approved agent candidates share both.
   - Also tasks, directive revoke, `relate` (registry `owner_settable`), export (`prm-operations-v2`), and the demo seed (E2E depends on its titles).
-- `erp.rs` (REA):
+- `prp.rs` (personal resource planning, REA):
   - The resource item master, locations and suppliers.
   - The purchase order state machine `draft → ordered → partially_received → received → closed / cancelled`. `active` is the legacy draft status, and lines can only be added to drafts.
   - Goods receipt posts `receipt` movements linked by `receives`; payment posts a `cash_entry` linked by `pays`, capped at the outstanding amount. `post_movement` is the only way stock changes.
@@ -117,7 +117,7 @@ cargo build --locked
 ### Frontend (`web/`)
 - `App.tsx` is the shell: auth, a 9-item nav, the global scene filter, and dialogs. Pages live in `web/pages/*` and receive a `PageContext` (`web/context.ts`) with `filter` (search + scene), `run` (mutate → refresh → toast), `onDialog`, and so on.
 - The whole `GET /api/workspace` is fetched on login, after each mutation, and on navigation.
-- Dialogs: `Editor.tsx` handles the generic and vault dialogs; `dialogs/ErpDialogs.tsx` and `dialogs/RelationDialogs.tsx` handle the new flows, dispatched by `dialog.type`.
+- Dialogs: `Editor.tsx` handles the generic and vault dialogs; `dialogs/PrpDialogs.tsx` and `dialogs/RelationDialogs.tsx` handle the new flows, dispatched by `dialog.type`.
 - `api()` paths are relative to `/api` and every call except `/auth/status` is signed. `/shared` is the grant recipient page.
 - E2E finds elements by zh-CN accessible names and labels, and checks for no horizontal overflow at 360–1440 px. Two constraints follow:
   - `labels.resource` must stay "资源", because relation selects use "资源 · …".

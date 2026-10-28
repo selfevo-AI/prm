@@ -38,7 +38,7 @@ import {
 } from "./api";
 import type { Page, PageContext } from "./context";
 import { Editor } from "./Editor";
-import { ErpDialog, isErpDialog } from "./dialogs/ErpDialogs";
+import { PrpDialog, isPrpDialog } from "./dialogs/PrpDialogs";
 import { RelationDialog, isRelationDialog } from "./dialogs/RelationDialogs";
 import { Auth } from "./pages/Auth";
 import { AuditLog } from "./pages/AuditLog";
@@ -68,7 +68,7 @@ const eyebrows: Record<Page, string> = {
   relations: "RELATIONS WITH OTHERS",
   mental: "MENTAL WORLD",
   digital: "DIGITAL WORLD",
-  physical: "PHYSICAL WORLD · ERP",
+  physical: "PHYSICAL WORLD · PRP",
   decisions: "DECISIONS",
   ontology: "ONTOLOGY",
   audit: "ACTIVITY",
@@ -490,8 +490,8 @@ export default function App() {
           {notice}
         </div>
       )}
-      {dialog && isErpDialog(dialog.type) && (
-        <ErpDialog
+      {dialog && isPrpDialog(dialog.type) && (
+        <PrpDialog
           key={`${dialog.type}-${dialog.entity?.id || ""}`}
           dialog={dialog}
           workspace={workspace}
@@ -508,7 +508,7 @@ export default function App() {
           onSaved={saved}
         />
       )}
-      {dialog && !isErpDialog(dialog.type) && !isRelationDialog(dialog.type) && (
+      {dialog && !isPrpDialog(dialog.type) && !isRelationDialog(dialog.type) && (
         <Editor
           key={`${dialog.type}-${dialog.entity?.id || dialog.core?.id || ""}`}
           dialog={dialog}

@@ -57,7 +57,11 @@ pub fn proposal(
     )?;
     store.relate(&entity.id, "derived_from", &source.id)?;
     store.audit(
-        if provider == OFFLINE { "agent" } else { "executor" },
+        if provider == OFFLINE {
+            "agent"
+        } else {
+            "executor"
+        },
         "proposal.created",
         &entity.id,
     )?;
@@ -249,7 +253,11 @@ fn prepare(
         .principles
         .iter()
         .take(10)
-        .filter_map(|id| principles.get(id).map(|title| json!({"id": id, "title": title})))
+        .filter_map(|id| {
+            principles
+                .get(id)
+                .map(|title| json!({"id": id, "title": title}))
+        })
         .collect();
     match c.action.as_str() {
         "create_task" => {
@@ -299,7 +307,10 @@ fn prepare(
             )?;
             ontology::validate_scenes(&c.scenes)?;
             Ok((
-                short(&format!("{subject_title} {} {object_title}", def.label), 120),
+                short(
+                    &format!("{subject_title} {} {object_title}", def.label),
+                    120,
+                ),
                 c.values.clone(),
                 c.scenes.clone(),
                 json!({"action": "create_relation", "relation": {"subject": c.subject, "predicate": def.id, "object": c.object, "subject_title": subject_title, "object_title": object_title}, "rationale": c.rationale, "principles": cited}),

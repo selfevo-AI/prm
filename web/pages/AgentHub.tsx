@@ -336,24 +336,25 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                 </tr>
               </thead>
               <tbody>
-                {runs.slice(0, 20).map((r) => (
-                  <tr key={r.id}>
-                    <td className="muted nowrap">{time(r.created_at)}</td>
-                    <td>{prop(r, "executor") === "model" ? `本地模型 ${prop(r, "model")}` : "离线规则"}</td>
-                    <td>{num(r, "attempts") || (r.status === "completed" ? 1 : 0)}</td>
-                    <td>
-                      {prop(r, "error") ||
-                        `${num(r, "proposals_created")} 条候选${
-                          Array.isArray(r.properties.rejected) && r.properties.rejected.length
-                            ? `，${r.properties.rejected.length} 条未通过校验`
-                            : ""
-                        }`}
-                    </td>
-                    <td>
-                      <StatusBadge status={r.status} />
-                    </td>
-                  </tr>
-                ))}
+                {runs.slice(0, 20).map((r) => {
+                  const rejected = Array.isArray(r.properties.rejected)
+                    ? r.properties.rejected.length
+                    : 0;
+                  return (
+                    <tr key={r.id}>
+                      <td className="muted nowrap">{time(r.created_at)}</td>
+                      <td>{prop(r, "executor") === "model" ? `本地模型 ${prop(r, "model")}` : "离线规则"}</td>
+                      <td>{num(r, "attempts") || (r.status === "completed" ? 1 : 0)}</td>
+                      <td>
+                        {prop(r, "error") ||
+                          `${num(r, "proposals_created")} 条候选${rejected ? `，${rejected} 条未通过校验` : ""}`}
+                      </td>
+                      <td>
+                        <StatusBadge status={r.status} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

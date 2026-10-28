@@ -22,10 +22,13 @@ async fn self_assessments_follow_the_catalog_and_stay_separate_observations() {
         .clone();
     assert!(rses["citation"].as_str().unwrap().contains("Rosenberg"));
     assert_eq!(rses["metrics"][0]["max"], 40.0);
-    let (status, body) = assess(&h, json!({"instrument":"bpnsfs","observed_at":"2026-10-20","scores":[
-        {"metric":"bpnsfs.autonomy_satisfaction","value":4.25},
-        {"metric":"bpnsfs.relatedness_frustration","value":1.5}
-    ]}))
+    let (status, body) = assess(
+        &h,
+        json!({"instrument":"bpnsfs","observed_at":"2026-10-20","scores":[
+            {"metric":"bpnsfs.autonomy_satisfaction","value":4.25},
+            {"metric":"bpnsfs.relatedness_frustration","value":1.5}
+        ]}),
+    )
     .await;
     assert_eq!(status, StatusCode::OK, "{body}");
     assert_eq!(body["recorded"], 2);
@@ -37,7 +40,11 @@ async fn self_assessments_follow_the_catalog_and_stay_separate_observations() {
         json!({"instrument":"rses","observed_at":"yesterday","scores":[{"metric":"rses.total","value":30}]}),
         json!({"instrument":"rses","observed_at":"2026-10-20","scores":[]}),
     ] {
-        assert_eq!(assess(&h, bad.clone()).await.0, StatusCode::BAD_REQUEST, "{bad}");
+        assert_eq!(
+            assess(&h, bad.clone()).await.0,
+            StatusCode::BAD_REQUEST,
+            "{bad}"
+        );
     }
     assert_eq!(
         assess(&h, json!({"instrument":"rses","observed_at":"2026-10-20","scores":[{"metric":"rses.total","value":30}],"total_score":100})).await.0,
@@ -76,12 +83,18 @@ async fn only_agent_visible_self_entries_reach_the_principles_context() {
         .await;
     assert_eq!(status, StatusCode::OK);
     let (_, hidden) = h
-        .owner("/api/self/identities", Some(json!({"statement":"HIDDEN-IDENTITY","category":"social"})))
+        .owner(
+            "/api/self/identities",
+            Some(json!({"statement":"HIDDEN-IDENTITY","category":"social"})),
+        )
         .await;
     assert_eq!(
-        h.owner("/api/self/identities", Some(json!({"statement":"x","category":"unknown"})))
-            .await
-            .0,
+        h.owner(
+            "/api/self/identities",
+            Some(json!({"statement":"x","category":"unknown"}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     for (title, stance, visible) in [
@@ -89,14 +102,20 @@ async fn only_agent_visible_self_entries_reach_the_principles_context() {
         ("我愿意善待失败时的自己", "compassion", true),
     ] {
         let (status, body) = h
-            .owner("/api/self/relations", Some(json!({"title":title,"stance":stance,"intensity":4,"agent_visible":visible})))
+            .owner(
+                "/api/self/relations",
+                Some(json!({"title":title,"stance":stance,"intensity":4,"agent_visible":visible})),
+            )
             .await;
         assert_eq!(status, StatusCode::OK, "{body}");
     }
     assert_eq!(
-        h.owner("/api/self/relations", Some(json!({"title":"x","stance":"diagnosis"})))
-            .await
-            .0,
+        h.owner(
+            "/api/self/relations",
+            Some(json!({"title":"x","stance":"diagnosis"}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     for (label, visible) in [("HIDDEN-METRIC", false), ("VISIBLE-METRIC", true)] {
@@ -104,7 +123,12 @@ async fn only_agent_visible_self_entries_reach_the_principles_context() {
         assert_eq!(status, StatusCode::OK);
     }
     let preview = h.owner("/api/self/agent-preview", None).await.1.to_string();
-    for expected in ["终身学习者", "善待失败", "VISIBLE-METRIC", "prm-principles-v1"] {
+    for expected in [
+        "终身学习者",
+        "善待失败",
+        "VISIBLE-METRIC",
+        "prm-principles-v1",
+    ] {
         assert!(preview.contains(expected), "{expected}");
     }
     assert!(!preview.contains("HIDDEN"));
@@ -112,9 +136,12 @@ async fn only_agent_visible_self_entries_reach_the_principles_context() {
     assert!(context.contains("终身学习者") && !context.contains("HIDDEN"));
     let path = "/api/self/visibility";
     assert_eq!(
-        h.owner(path, Some(json!({"id":hidden["id"],"agent_visible":true,"expected_version":1})))
-            .await
-            .0,
+        h.owner(
+            path,
+            Some(json!({"id":hidden["id"],"agent_visible":true,"expected_version":1}))
+        )
+        .await
+        .0,
         StatusCode::OK
     );
     assert!(h
@@ -124,16 +151,22 @@ async fn only_agent_visible_self_entries_reach_the_principles_context() {
         .to_string()
         .contains("HIDDEN-IDENTITY"));
     assert_eq!(
-        h.owner(path, Some(json!({"id":hidden["id"],"agent_visible":false,"expected_version":1})))
-            .await
-            .0,
+        h.owner(
+            path,
+            Some(json!({"id":hidden["id"],"agent_visible":false,"expected_version":1}))
+        )
+        .await
+        .0,
         StatusCode::CONFLICT
     );
     let resource = h.resource().await;
     assert_eq!(
-        h.owner(path, Some(json!({"id":resource["id"],"agent_visible":true,"expected_version":1})))
-            .await
-            .0,
+        h.owner(
+            path,
+            Some(json!({"id":resource["id"],"agent_visible":true,"expected_version":1}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
 }
@@ -175,20 +208,29 @@ async fn relationships_keep_an_interaction_ledger_and_surface_due_contacts() {
         .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(
-        h.owner(&path, Some(json!({"date":month_ago,"channel":"meet","expected_version":1})))
-            .await
-            .0,
+        h.owner(
+            &path,
+            Some(json!({"date":month_ago,"channel":"meet","expected_version":1}))
+        )
+        .await
+        .0,
         StatusCode::CONFLICT
     );
     let tomorrow_plus = (today + chrono::Days::new(3)).to_string();
     assert_eq!(
-        h.owner(&path, Some(json!({"date":tomorrow_plus,"channel":"call","expected_version":2})))
-            .await
-            .0,
+        h.owner(
+            &path,
+            Some(json!({"date":tomorrow_plus,"channel":"call","expected_version":2}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     let (status, _) = h
-        .owner(&path, Some(json!({"date":two_months_ago,"channel":"call","valence":-1,"expected_version":2})))
+        .owner(
+            &path,
+            Some(json!({"date":two_months_ago,"channel":"call","valence":-1,"expected_version":2})),
+        )
         .await;
     assert_eq!(status, StatusCode::OK);
     let current = h.entity(id).await;
@@ -241,9 +283,12 @@ async fn scenes_are_validated_stored_and_exported() {
     assert_eq!(status, StatusCode::OK);
     assert_eq!(task["scenes"], json!(["work", "learning"]));
     assert_eq!(
-        h.owner("/api/entities", Some(json!({"kind":"task","title":"x","scenes":["moon"],"properties":{}})))
-            .await
-            .0,
+        h.owner(
+            "/api/entities",
+            Some(json!({"kind":"task","title":"x","scenes":["moon"],"properties":{}}))
+        )
+        .await
+        .0,
         StatusCode::BAD_REQUEST
     );
     let note = h.create("note", "读书笔记", json!({"body":"笔记"})).await;
