@@ -9,3 +9,6 @@
 *.log
 *.tsbuildinfo
 .env
+
+# Local-only source paper, not distributed:
+Three_Worlds_Economic_Model_AI_and_Embodied_Intelligence_EN.docx
