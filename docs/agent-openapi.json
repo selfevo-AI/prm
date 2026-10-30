@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "PRM Agent Import API",
-    "version": "0.4.0",
-    "description": "外部 AI Agent 向本人的 PRM 推送资源、关系与待办。导入内容只会成为待本人审核的建议；连接令牌只能导入并查询自己导入的状态，不能读取 PRM 中的任何数据。服务只监听本机回环地址。"
+    "version": "0.5.0",
+    "description": "外部 AI Agent 向本人的 PRM 推送资源、关系与待办。导入内容只会成为待本人审核的建议；连接令牌只能导入并查询自己导入的状态，不能读取 PRM 中的任何数据。服务只监听本机回环地址。 / External AI agents push resources, relations and to-dos to the owner's PRM. Imports only become proposals awaiting the owner's review; a connection token can only import and query its own imports, never read any PRM data. The server listens on the local loopback address only."
   },
   "servers": [{ "url": "http://127.0.0.1:4317" }],
   "security": [{ "connectionToken": [] }],
@@ -12,7 +12,7 @@
       "connectionToken": {
         "type": "http",
         "scheme": "bearer",
-        "description": "在 PRM「数字空间 · Agent 接入」签发的连接令牌（prm_ 开头，只显示一次）。"
+        "description": "在 PRM「数字空间 · Agent 接入」签发的连接令牌（prm_ 开头，只显示一次）。 / Connection token issued in PRM under Digital space · Agent connections (starts with prm_, shown once)."
       }
     },
     "parameters": {
@@ -28,7 +28,7 @@
       "Scene": {
         "type": "string",
         "enum": ["self", "emotion", "life", "work", "health", "learning", "finance", "social"],
-        "description": "人生场景：自我、情感、生活、工作、健康、学习、财务、社交"
+        "description": "人生场景：自我、情感、生活、工作、健康、学习、财务、社交 / Life scenes: self, emotion, life, work, health, learning, finance, social"
       },
       "ImportItem": {
         "type": "object",
@@ -113,7 +113,7 @@
     "/api/agent/import": {
       "post": {
         "operationId": "prmImport",
-        "summary": "导入资源、关系与待办，由本人审核后纳入 PRM",
+        "summary": "导入资源、关系与待办，由本人审核后纳入 PRM / Import resources, relations and to-dos for owner review",
         "parameters": [{ "$ref": "#/components/parameters/PrmRequest" }],
         "requestBody": {
           "required": true,
@@ -131,7 +131,7 @@
     "/api/agent/imports": {
       "get": {
         "operationId": "prmListImports",
-        "summary": "列出本连接最近的导入状态",
+        "summary": "列出本连接最近的导入状态 / List recent import status for this connection",
         "responses": {
           "200": {
             "description": "最近 50 个导入",
@@ -147,7 +147,7 @@
     "/api/agent/imports/{id}": {
       "get": {
         "operationId": "prmImportStatus",
-        "summary": "查询一个导入的处理状态",
+        "summary": "查询一个导入的处理状态 / Check one import's processing status",
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
         "responses": {
           "200": { "description": "状态", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ImportStatus" } } } },

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode, type FormEvent } from "react";
 import { Inbox, X, LoaderCircle, Check, LockKeyhole, Eye, EyeOff } from "lucide-react";
-import { labels, SCENES, sceneLabel, visible, type Entity } from "./api";
+import { label, SCENES, sceneLabel, visible, type Entity } from "./api";
+import { t } from "./i18n";
 
 export function Empty({
   title,
@@ -22,7 +23,7 @@ export function Values({ values }: { values: string[] }) {
     <span className="values">
       {values.map((value) => (
         <span key={value} className={`value ${value}`}>
-          {labels[value]}
+          {label(value)}
         </span>
       ))}
     </span>
@@ -49,7 +50,7 @@ export function ValueInput({
 }) {
   return (
     <fieldset className="value-input">
-      <legend>评价维度</legend>
+      <legend>{t("评价维度")}</legend>
       {["need", "desire", "existence"].map((value) => (
         <label key={value}>
           <input
@@ -63,7 +64,7 @@ export function ValueInput({
               )
             }
           />
-          {labels[value]}
+          {label(value)}
         </label>
       ))}
     </fieldset>
@@ -80,7 +81,7 @@ export function SceneInput({
 }) {
   return (
     <fieldset className="value-input scene-input">
-      <legend>{legend}</legend>
+      <legend>{t(legend)}</legend>
       {SCENES.map((scene) => (
         <label key={scene}>
           <input
@@ -101,9 +102,9 @@ export function SceneInput({
   );
 }
 /** Filled dots for ordinal ratings such as IOS closeness or centrality. */
-export function Dots({ value, max, label }: { value: number; max: number; label: string }) {
+export function Dots({ value, max, label: name }: { value: number; max: number; label: string }) {
   return (
-    <span className="dots" role="img" aria-label={`${label} ${value}/${max}`}>
+    <span className="dots" role="img" aria-label={`${t(name)} ${value}/${max}`}>
       {Array.from({ length: max }, (_, i) => (
         <i key={i} className={i < value ? "on" : ""} />
       ))}
@@ -120,17 +121,22 @@ export function VisibilityToggle({
   onToggle: (entity: Entity) => void;
 }) {
   const on = visible(entity);
+  const state = on ? t("本地模型可见") : t("仅本人");
   return (
     <button
       type="button"
       className={`visibility ${on ? "on" : ""}`}
       disabled={busy}
-      aria-label={`${entity.title}：${on ? "本地模型可见" : "仅本人"}，点击切换`}
-      title={on ? "本地模型可以读取，点击改为仅本人" : "仅本人，点击允许本地模型读取"}
+      aria-label={t("{title}：{state}，点击切换", { title: entity.title, state })}
+      title={
+        on
+          ? t("本地模型可以读取，点击改为仅本人")
+          : t("仅本人，点击允许本地模型读取")
+      }
       onClick={() => onToggle(entity)}
     >
       {on ? <Eye size={14} /> : <EyeOff size={14} />}
-      {on ? "本地模型可见" : "仅本人"}
+      {state}
     </button>
   );
 }
@@ -172,8 +178,8 @@ export function Modal({
           <button
             type="button"
             className="icon-button"
-            aria-label="关闭"
-            title="关闭"
+            aria-label={t("关闭")}
+            title={t("关闭")}
             onClick={onClose}
             disabled={busy}
           >
@@ -195,7 +201,7 @@ export function Modal({
             onClick={onClose}
             disabled={busy}
           >
-            取消
+            {t("取消")}
           </button>
           {onSubmit && (
             <button className="button primary" disabled={busy}>
@@ -204,7 +210,7 @@ export function Modal({
               ) : (
                 <Check size={16} />
               )}
-              {submit}
+              {t(submit)}
             </button>
           )}
         </footer>
@@ -229,10 +235,10 @@ export function PasswordConfirm({
     <div className="confirm-section">
       <div className="section-caption">
         <LockKeyhole size={15} />
-        本人确认
+        {t("本人确认")}
       </div>
       <label className="field">
-        账户口令
+        {t("账户口令")}
         <input
           required
           type="password"
@@ -249,8 +255,8 @@ export function PasswordConfirm({
           onChange={(event) => setConfirmed(event.target.checked)}
         />
         {publish
-          ? "我确认发布以上内容，允许助理读取并提出建议"
-          : "我已阅读，确认这是我本人的判断"}
+          ? t("我确认发布以上内容，允许助理读取并提出建议")
+          : t("我已阅读，确认这是我本人的判断")}
       </label>
     </div>
   );
@@ -259,13 +265,13 @@ export function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`status ${status}`}>
       <i />
-      {labels[status] || status}
+      {label(status)}
     </span>
   );
 }
 /** A controlled text input wrapped in the standard field label. */
 export function TextField({
-  label,
+  label: name,
   value,
   onChange,
   type = "text",
@@ -289,7 +295,7 @@ export function TextField({
 }) {
   return (
     <label className="field">
-      {label}
+      {t(name)}
       <input
         required={required}
         type={type}
@@ -297,7 +303,7 @@ export function TextField({
         min={min}
         max={max}
         step={step}
-        placeholder={placeholder}
+        placeholder={placeholder === undefined ? undefined : t(placeholder)}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -305,7 +311,7 @@ export function TextField({
   );
 }
 export function SelectField({
-  label,
+  label: name,
   value,
   onChange,
   options,
@@ -321,17 +327,17 @@ export function SelectField({
 }) {
   return (
     <label className="field">
-      {label}
+      {t(name)}
       <select
-        aria-label={label}
+        aria-label={t(name)}
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
-        {placeholder !== undefined && <option value="">{placeholder}</option>}
+        {placeholder !== undefined && <option value="">{t(placeholder)}</option>}
         {options.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {t(option.label)}
           </option>
         ))}
       </select>

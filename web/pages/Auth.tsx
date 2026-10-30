@@ -11,6 +11,7 @@ import {
   UnlockKeyhole,
 } from "lucide-react";
 import { api } from "../api";
+import { LocaleSelect, t } from "../i18n";
 
 export function Auth({
   initialized,
@@ -27,7 +28,7 @@ export function Auth({
     event.preventDefault();
     setError("");
     if (!initialized && password !== repeat) {
-      setError("两次口令不一致");
+      setError(t("两次口令不一致"));
       return;
     }
     setBusy(true);
@@ -51,10 +52,13 @@ export function Auth({
           </div>
           <span>prm.</span>
         </div>
-        <span className="local-badge">
-          <ShieldCheck size={15} />
-          本机工作区
-        </span>
+        <div className="auth-top-right">
+          <LocaleSelect />
+          <span className="local-badge">
+            <ShieldCheck size={15} />
+            {t("本机工作区")}
+          </span>
+        </div>
       </div>
       <div className="auth-content">
         <div className="auth-worlds">
@@ -67,11 +71,11 @@ export function Auth({
           <Boxes />
         </div>
         <p className="eyebrow">PERSONAL RESOURCE · RELATION MANAGEMENT</p>
-        <h1>{initialized ? "回到你的资源空间" : "建立你的资源空间"}</h1>
-        <p className="auth-subtitle">自我 · 思维 · 数字 · 物理</p>
+        <h1>{initialized ? t("回到你的资源空间") : t("建立你的资源空间")}</h1>
+        <p className="auth-subtitle">{t("自我 · 思维 · 数字 · 物理")}</p>
         <form onSubmit={submit}>
           <label className="field">
-            {initialized ? "账户口令" : "设置账户口令"}
+            {initialized ? t("账户口令") : t("设置账户口令")}
             <input
               type="password"
               autoComplete={initialized ? "current-password" : "new-password"}
@@ -79,7 +83,7 @@ export function Auth({
               required
               minLength={initialized ? 1 : 12}
               maxLength={128}
-              placeholder={initialized ? "输入口令" : "至少 12 个字符"}
+              placeholder={initialized ? t("输入口令") : t("至少 12 个字符")}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -87,7 +91,7 @@ export function Auth({
           {!initialized && (
             <>
               <label className="field">
-                再次输入口令
+                {t("再次输入口令")}
                 <input
                   type="password"
                   autoComplete="new-password"
@@ -99,7 +103,9 @@ export function Auth({
               <div className="privacy-note">
                 <LockKeyhole size={17} />
                 <span>
-                  此口令也用于加密思维库。请妥善保管，遗失后无法恢复其中内容。
+                  {t(
+                    "此口令也用于加密思维库。请妥善保管，遗失后无法恢复其中内容。",
+                  )}
                 </span>
               </div>
             </>
@@ -115,16 +121,17 @@ export function Auth({
             ) : (
               <UnlockKeyhole size={18} />
             )}
-            {initialized ? "进入工作区" : "创建本地账户"}
+            {initialized ? t("进入工作区") : t("创建本地账户")}
           </button>
         </form>
         <div className="auth-bottom">
           <span className="mini-dot" />
-          本地存储 <span>·</span> 思维库加密 <span>·</span> 离线运行
+          {t("本地存储")} <span>·</span> {t("思维库加密")} <span>·</span>{" "}
+          {t("离线运行")}
         </div>
       </div>
       <div className="auth-footer">
-        PRM / 个人资源与关系本体 <span>0.4</span>
+        {t("PRM / 个人资源与关系本体")} <span>0.5</span>
       </div>
     </div>
   );

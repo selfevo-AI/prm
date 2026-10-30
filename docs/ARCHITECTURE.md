@@ -1,4 +1,4 @@
-# 架构与文档映射（0.4）
+# 架构与文档映射（0.5）
 
 ## 重新思考后的总体定位
 
@@ -19,14 +19,14 @@ PRM 是一个基于本体论框架的个人信息、Resource（资源）与 Rela
 
 | 范畴 | 类 |
 | --- | --- |
-| 主体 Agent | 自我本体、人物、供应商 |
+| 主体 Agent | 自我本体、人物、供应商、AI Agent |
 | 资源 Resource | 资源/物料、库位、知识条目、执行方向、会话、本地模型、路由规则 |
 | 事件 Event | 消息、库存流水、现金流水、互动记录、Agent 导入、路由运行 |
 | 承诺 Commitment | 任务、采购订单、采购订单行、建议 |
 | 关系 Relation | 自我认同、自我关系、人际关系 |
 | 观察 Observation | 生理自我指标、心理自我认定 |
 
-关系（谓词）按层组织：自我关系、外部关系、资源关系（PRP）、数字关系、来源追溯。所有类与谓词定义在 `src/ontology.rs` 的注册表中，是唯一来源：数据库约束、后端校验和界面展示都从它派生。
+关系（谓词）按层组织：自我关系、外部关系、资源关系（PRP）、数字关系、来源追溯。所有类与谓词定义在 `src/ontology.rs` 的注册表中，是唯一来源：数据库约束、后端校验和界面展示都从它派生。与 AI Agent 的接入遵循“接入即关系”：签发连接令牌时，Agent 先登记为数字界实体（`ai_agent`），再以 `relationship`（`involves` → Agent 实体、`relates_to_self` → 自我本体）建立本人与它在所选人生场景中的关系；导入信封通过 `from_agent` 追溯到该实体。接入平台预设与令牌片段定义在 `src/agents/registry.rs`。
 
 ## 与原文的对应
 
@@ -47,7 +47,7 @@ PRM 是一个基于本体论框架的个人信息、Resource（资源）与 Rela
 
 ```mermaid
 flowchart TB
-    U[本人] --> UI[React 中文工作区]
+    U[本人] --> UI[React 中英文工作区]
     UI -->|会话 + Ed25519 请求签名| S[Rust / Axum 本机服务]
     S --> G[认证与权限边界]
     G --> V[思维库：本人解锁、重新确认]
@@ -55,7 +55,7 @@ flowchart TB
     G --> PRP[物理资源 PRP：物料、库位、供应商、采购、收货、付款]
     G --> DEC[决策中心：统一建议队列]
     V -->|本人发布| DIR[执行方向 = 核心原则]
-    X[外部 Agent：HTTP / MCP] -->|连接令牌，只能导入| GW[Agent 网关]
+    X[外部 Agent：Grok / Claude / ChatGPT / Muse 等] -->|连接令牌，只能导入| GW[Agent 网关]
     GW --> IMP[(导入信封 agent_import)]
     IMP --> R[路由 router]
     R -->|默认| OFF[离线规则]
@@ -79,12 +79,12 @@ flowchart TB
 - `src/store.rs`：PostgreSQL 读写、乐观版本、事务、只追加审计。`src/database.rs`：同步驱动适配。`src/legacy.rs`：旧 SQLite 只读导入。
 - `src/auth.rs`、`src/crypto.rs`、`src/vault.rs`、`src/security.rs`：账户、加密思维库、本人发布、只读授权与请求签名。
 - `src/self_model.rs`：自我本体——量表目录（只含元数据与出处）、测评记录、自我认同、自我关系、Agent 可见性、核心原则预览。
-- `src/relationships.rs`：与他人的关系——人物、人际关系（IOS 亲密度、RAS 满意度、联系节奏）、互动流水。
+- `src/relationships.rs`：与他人的关系——人物、人际关系（IOS 亲密度、RAS 满意度、联系节奏）、与 AI Agent 的关系（`ai_*` 关系类型）、互动流水。
 - `src/prp.rs`：物理资源 PRP（个人资源计划）——物料主数据、库位、供应商、采购订单状态机、收货、付款、库存与现金流水。
 - `src/operations.rs`：通用实体创建（本人表单与采纳的候选共用同一套校验）、任务、执行方向撤回、关系、导出、演示数据。
 - `src/analysis.rs`：离线分析规则、统一建议队列、候选校验与本人采纳。
-- `src/agents/`：`credentials`（外部 Agent 令牌）、`gateway`（导入接口）、`router`（本地模型、路由规则、核心原则上下文）、`executor`（离线规则执行与执行器任务接口）。
-- `web/`：中文界面。`App.tsx` 是外壳（导航、场景筛选、对话框），`web/pages/` 各页面，`web/dialogs/` PRP 与关系对话框，`web/Editor.tsx` 通用对话框。
+- `src/agents/`：`credentials`（外部 Agent 令牌，“接入即关系”）、`registry`（主流接入平台预设与接入片段）、`gateway`（导入接口）、`router`（本地模型、路由规则、核心原则上下文）、`executor`（离线规则执行与执行器任务接口）。
+- `web/`：中文与英文界面（`web/i18n.tsx` + `web/en.ts` 词典，默认中文）。`App.tsx` 是外壳（导航、场景筛选、语言切换、对话框），`web/pages/` 各页面，`web/dialogs/` PRP 与关系对话框，`web/Editor.tsx` 通用对话框。
 - `scripts/prm-model-worker.mjs`：本地模型执行器；`scripts/prm-mcp.mjs`：MCP 工具桥；`docs/agent-openapi.json`：HTTP 导入接口说明。
 
 ## 本人驱动的闭环

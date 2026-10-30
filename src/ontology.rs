@@ -305,6 +305,7 @@ pub const CLASSES: &[ClassDef] = &[
         &["finance"],
         "owner-confirm",
     ),
+    class("ai_agent", "AI Agent", "agent", &["digital"], &[], "owner"),
     class(
         "agent_import",
         "Agent 导入",
@@ -351,6 +352,7 @@ const REFERABLE: &[&str] = &[
     "directive",
     "resource",
     "person",
+    "ai_agent",
     "supplier",
     "location",
     "relationship",
@@ -508,7 +510,7 @@ pub const PREDICATES: &[PredicateDef] = &[
         layer: "external",
         owner_settable: false,
         agent_proposable: false,
-        signatures: &[sig(&["relationship"], &["person"])],
+        signatures: &[sig(&["relationship"], &["person", "ai_agent"])],
     },
     PredicateDef {
         id: "occurs_in",
@@ -581,6 +583,14 @@ pub const PREDICATES: &[PredicateDef] = &[
         owner_settable: false,
         agent_proposable: false,
         signatures: &[sig(&["agent_run"], &["agent_import"])],
+    },
+    PredicateDef {
+        id: "from_agent",
+        label: "来自",
+        layer: "provenance",
+        owner_settable: false,
+        agent_proposable: false,
+        signatures: &[sig(&["agent_import"], &["ai_agent"])],
     },
 ];
 
@@ -780,6 +790,9 @@ mod tests {
         assert!(!relation_valid("task", "derived_from", "message"));
         assert!(relation_valid("stock_movement", "records", "resource"));
         assert!(relation_valid("relationship", "involves", "person"));
+        assert!(relation_valid("relationship", "involves", "ai_agent"));
+        assert!(relation_valid("agent_import", "from_agent", "ai_agent"));
+        assert!(!relation_valid("agent_import", "from_agent", "person"));
         assert!(!relation_valid("task", "unknown", "resource"));
         for id in [
             "derived_from",
@@ -788,6 +801,7 @@ mod tests {
             "receives",
             "pays",
             "processes",
+            "from_agent",
         ] {
             assert!(!predicate_def(id).unwrap().owner_settable, "{id}");
         }
@@ -800,5 +814,7 @@ mod tests {
         assert!(scenes_for("task", &["unknown".into()]).is_err());
         assert!(scenes_for("task", &["work".into(), "work".into()]).is_err());
         assert!(sync_sql().contains("'relationship'"));
+        assert!(sync_sql().contains("'ai_agent'") && sync_sql().contains("'from_agent'"));
+        assert_eq!(class_def("ai_agent").unwrap().worlds, &["digital"]);
     }
 }

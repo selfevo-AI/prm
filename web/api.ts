@@ -1,3 +1,4 @@
+import { locale, t } from "./i18n";
 import { devicePublicKey, signatureHeaders } from "./security";
 export interface Entity {
   id: string;
@@ -139,9 +140,9 @@ export async function api<T>(path: string, body?: unknown): Promise<T> {
   });
   const result = await response
     .json()
-    .catch(() => ({ error: "服务返回了无效响应" }));
+    .catch(() => ({ error: t("服务返回了无效响应") }));
   if (!response.ok)
-    throw new ApiError(result.error || "请求失败，请稍后重试", response.status);
+    throw new ApiError(result.error || t("请求失败，请稍后重试"), response.status);
   return result as T;
 }
 export const SCENES = ["self", "emotion", "life", "work", "health", "learning", "finance", "social"];
@@ -170,6 +171,7 @@ export const labels: Record<string, string> = {
   purchase_order_line: "采购订单行",
   agent_run: "路由运行",
   agent_import: "Agent 导入",
+  ai_agent: "AI Agent",
   model_endpoint: "本地模型",
   route_rule: "路由规则",
   cash_entry: "现金流水",
@@ -251,6 +253,28 @@ export const labels: Record<string, string> = {
   involves: "涉及",
   occurs_in: "发生于",
   processes: "处理",
+  from_agent: "来自",
+  ai_assistant: "AI 助理",
+  ai_companion: "AI 伙伴",
+  ai_mentor: "AI 导师",
+  grok: "Grok（xAI）",
+  chatgpt: "ChatGPT（OpenAI）",
+  claude: "Claude（Anthropic）",
+  gemini: "Gemini（Google）",
+  copilot: "Microsoft Copilot",
+  muse: "Muse（muse.ai）",
+  deepseek: "DeepSeek",
+  qwen: "通义千问（Qwen）",
+  kimi: "Kimi（月之暗面）",
+  dify: "Dify",
+  n8n: "n8n",
+  langchain: "LangChain / LangGraph",
+  cursor: "Cursor",
+  cline: "Cline",
+  custom: "自定义 / 通用",
+  http: "HTTP / OpenAPI",
+  mcp: "MCP 工具桥",
+  other: "其他",
   consumable: "消耗品",
   asset: "资产",
   receipt: "入库",
@@ -264,9 +288,11 @@ export const labels: Record<string, string> = {
   openai_compatible: "OpenAI 兼容",
   "offline-rules": "离线规则",
 };
-export const sceneLabel = (scene: string) => labels[`scene:${scene}`] || scene;
+export const sceneLabel = (scene: string) => t(labels[`scene:${scene}`] || scene);
+/** A taxonomy key translated through the shared label table. */
+export const label = (key: string) => t(labels[key] ?? key);
 export const time = (value: string) =>
-  new Date(value).toLocaleString("zh-CN", {
+  new Date(value).toLocaleString(locale() === "zh" ? "zh-CN" : "en-US", {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -274,9 +300,10 @@ export const time = (value: string) =>
   });
 export const today = () => new Date().toLocaleDateString("en-CA");
 export const money = (cents: number) =>
-  new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY" }).format(
-    cents / 100,
-  );
+  new Intl.NumberFormat(locale() === "zh" ? "zh-CN" : "en-US", {
+    style: "currency",
+    currency: "CNY",
+  }).format(cents / 100);
 export const prop = (entity: Entity, key: string) =>
   String(entity.properties[key] ?? "");
 export const num = (entity: Entity, key: string) =>
@@ -285,10 +312,10 @@ export const visible = (entity: Entity) => entity.properties.agent_visible === t
 /** Yuan text (at most two decimals) to integer cents. */
 export function cents(amount: string): number {
   if (!/^\d+(\.\d{1,2})?$/.test(amount.trim()))
-    throw new Error("金额最多保留两位小数");
+    throw new Error(t("金额最多保留两位小数"));
   const [whole, fraction = ""] = amount.trim().split(".");
   const value = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-  if (!Number.isSafeInteger(value)) throw new Error("金额超出范围");
+  if (!Number.isSafeInteger(value)) throw new Error(t("金额超出范围"));
   return value;
 }
 /** Days since a YYYY-MM-DD date (or an ISO timestamp). */

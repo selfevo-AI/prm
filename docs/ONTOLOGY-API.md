@@ -1,10 +1,10 @@
-# 本体与 API（0.4）
+# 本体与 API（0.5）
 
 ## 表结构
 
 `ontology_classes` 注册业务类；`entities` 存储具有稳定 UUID、类、世界维度、评价维度、人生场景、属性、状态、版本和时间戳的实体（JSON 列为 TEXT 并由 CHECK 校验）。`relations` 以 subject/predicate/object 连接实体，具有外键、自关联禁止和唯一约束。类与谓词定义在 `src/ontology.rs` 注册表中；服务启动时由注册表同步 `ontology_classes` 和 `relations_predicate_check`，谓词的 domain/range 签名由 Rust 再次校验。
 
-`vault` 只存储一个版本化认证密文。其内部的 `principle`、`goal`、`reflection` 不注册到业务实体表，泛化接口无法创建、读取或覆盖思维条目。`agent_credentials` 保存外部 Agent 连接（令牌只存 SHA-256）。
+`vault` 只存储一个版本化认证密文。其内部的 `principle`、`goal`、`reflection` 不注册到业务实体表，泛化接口无法创建、读取或覆盖思维条目。`agent_credentials` 保存外部 Agent 连接（令牌只存 SHA-256；`entity_id` 指向对应的 `ai_agent` 实体，旧连接为空串）。
 
 ## 类
 
@@ -13,10 +13,11 @@
 | principle / goal / reflection | 资源（加密） | 思维 | — | 本人文字、价值维度、版本、确认记录 |
 | self_profile | 主体 | 自我 | 自我 | 自我本体锚点 |
 | person | 主体 | 物理 | 社交 | 姓名、备注、`agent_visible` |
+| ai_agent | 主体 | 数字 | — | 接入平台、接入方式、备注；仅通过“Agent 接入”创建 |
 | supplier | 主体 | 物理 | 财务 | 联系方式、税号、备注 |
 | identity | 关系 | 自我 + 思维 | 自我 | “我是……”陈述、TST 类别、重要程度 1–5 |
 | self_relation | 关系 | 自我 | 自我 | 立场、强度 1–5、关联对象 |
-| relationship | 关系 | 自我 | 按类型 | 类型、IOS 亲密度 1–7、RAS 满意度 1–5、联系节奏、最近联系 |
+| relationship | 关系 | 自我 | 按类型 | 类型、`party_kind`（person / ai_agent）、IOS 亲密度 1–7、RAS 满意度 1–5、联系节奏、最近联系；AI 关系记录 agent_id/agent_name 与平台 |
 | body_metric / psychological_metric | 观察 | 自我 + 物理 / 思维 | 量表默认 | metric、instrument、value、unit、range、observed_at |
 | interaction | 事件 | 自我 | 随关系 | 日期、方式、情绪体验 −2…2、备注 |
 | directive | 资源 | 数字 | 全部 | 本人发布的执行要求（核心原则） |
@@ -40,7 +41,7 @@
 | 自我关系 | `measures` | 指标 → 自我本体、资源、任务、人际关系 | 本人 |
 | 自我关系 | `supports` | 资源、任务、知识、方向、人际关系、人物 → 自我本体、指标、认同 | 本人 |
 | 自我关系 | `influences` | 自我本体、指标、认同、自我关系、人际关系 → 任务、资源、方向 | 本人 |
-| 外部关系 | `involves` | 人际关系 → 人物 | 系统 |
+| 外部关系 | `involves` | 人际关系 → 人物、AI Agent | 系统 |
 | 外部关系 | `occurs_in` | 互动 → 人际关系 | 系统 |
 | 资源关系 | `uses` | 任务 → 资源 | 本人，Agent 可建议 |
 | 资源关系 | `supplies` | 供应商 → 资源、采购订单 | 本人，Agent 可建议 |
@@ -54,6 +55,7 @@
 | 数字关系 | `belongs_to` | 消息 → 会话 | 系统 |
 | 来源追溯 | `derived_from` | 建议 → 消息、资源、人际关系、导入；任务、资源、知识、人物、供应商、库位 → 建议 | 系统 |
 | 来源追溯 | `processes` | 路由运行 → 导入 | 系统 |
+| 来源追溯 | `from_agent` | Agent 导入 → AI Agent | 系统 |
 
 这是带类型约束的属性图模型，落地在关系型 PostgreSQL 中，不是完整的 RDF/OWL 推理平台。首版不开放任意自定义类或关系，避免通过扩展绕过安全边界。
 
@@ -89,7 +91,7 @@
 | `/api/self/relations` | POST | `{title, stance, intensity, target_id?, notes?, scenes?, agent_visible?}` |
 | `/api/self/visibility` | POST | `{id, agent_visible, expected_version}`，逐条控制本地模型可见性 |
 | `/api/self/agent-preview` | GET | 本地模型实际收到的核心原则上下文 |
-| `/api/relationships` | POST | `{person_id 或 person_name, type, closeness, satisfaction?, contact_interval_days, notes?, scenes?, agent_visible?}` |
+| `/api/relationships` | POST | `{person_id 或 person_name, type, closeness, satisfaction?, contact_interval_days, notes?, scenes?, agent_visible?}`；`type` 不接受 `ai_*`（AI 关系通过 Agent 接入建立） |
 | `/api/relationships/{id}` | POST | 调整亲密度、满意度、节奏、状态、场景（`expected_version`） |
 | `/api/relationships/{id}/interactions` | POST | `{date, channel, valence, notes?, expected_version}` |
 | `/api/resources/{id}/movement` | POST | `{delta, reason, expected_version, movement_type?}`，类型 receipt/issue/adjustment |
@@ -97,7 +99,7 @@
 | `/api/purchase-orders/{id}/status` | POST | `{status: ordered/cancelled/closed, expected_version}` |
 | `/api/purchase-orders/{id}/receive` | POST | `{lines:[{line_id, quantity}], note?, expected_version}` |
 | `/api/purchase-orders/{id}/pay` | POST | `{amount_cents, date, title?, expected_version}`，不超过未付金额 |
-| `/api/agents/connections` | GET/POST | 列出 / 签发外部 Agent 连接（令牌只返回一次） |
+| `/api/agents/connections` | GET/POST | 列出 / 签发外部 Agent 连接（令牌只返回一次）。POST 可带 `platform`（接入平台预设 id，空为 custom）、`relationship_type`（`ai_assistant`/`ai_companion`/`ai_mentor`，空为 ai_assistant）与 `scenes`：同时登记 `ai_agent` 实体、建立本人与它的关系，并返回可复制的 `snippet` |
 | `/api/agents/connections/revoke` | POST | `{id}` |
 | `/api/agents/models` | POST | `{title, provider: ollama/openai_compatible, base_url（仅回环 http）, model}` |
 | `/api/agents/routes` | POST | `{title, priority, agent_id?, scene?, item_kind?, executor: "offline-rules" 或模型 id}` |

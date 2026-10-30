@@ -16,9 +16,10 @@ import {
   UsersRound,
   Wallet,
 } from "lucide-react";
-import { api, daysSince, labels, money, num, prop, SCENES, sceneLabel, today } from "../api";
+import { api, daysSince, label, money, num, prop, SCENES, sceneLabel, today } from "../api";
 import { Empty, Values } from "../components";
 import type { PageContext } from "../context";
+import { locale, t } from "../i18n";
 
 export function Dashboard({ ctx }: { ctx: PageContext }) {
   const { byKind, filter, inScene, onDialog, go, busy, run, workspace } = ctx;
@@ -63,84 +64,90 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
           status,
           expected_version: task.version,
         }),
-      "任务已更新",
+      t("任务已更新"),
     );
   return (
     <>
       <div className="overview-bar">
         <div>
           <span className="today-date">
-            {new Date().toLocaleDateString("zh-CN", {
+            {new Date().toLocaleDateString(locale() === "zh" ? "zh-CN" : "en-US", {
               month: "long",
               day: "numeric",
               weekday: "long",
             })}
           </span>
           <span className="overview-divider" />
-          <span>让资源与关系服务于你的方向</span>
+          <span>{t("让资源与关系服务于你的方向")}</span>
         </div>
         <button className="text-button" onClick={() => go("mental")}>
-          回顾思维体系
+          {t("回顾思维体系")}
           <ArrowRight size={15} />
         </button>
       </div>
-      <section className="metrics" aria-label="工作区概况">
+      <section className="metrics" aria-label={t("工作区概况")}>
         <div className="metric">
           <div>
-            <span>进行中的任务</span>
+            <span>{t("进行中的任务")}</span>
             <ListTodo size={18} />
           </div>
           <strong>
             {allTasks.filter((e) => ["todo", "doing"].includes(e.status)).length}
-            <small>项</small>
+            <small>{t("项")}</small>
           </strong>
           <span className="metric-note">
-            已完成 {allTasks.filter((e) => e.status === "done").length} 项
+            {t("已完成 {count} 项", {
+              count: allTasks.filter((e) => e.status === "done").length,
+            })}
           </span>
         </div>
         <div className="metric">
           <div>
-            <span>等待你的判断</span>
+            <span>{t("等待你的判断")}</span>
             <ClipboardCheck size={18} />
           </div>
           <strong>
             {proposals.length}
-            <small>条</small>
+            <small>{t("条")}</small>
           </strong>
-          <span className="metric-note coral">建议待确认</span>
+          <span className="metric-note coral">{t("建议待确认")}</span>
         </div>
         <div className="metric">
           <div>
-            <span>本月净现金流</span>
+            <span>{t("本月净现金流")}</span>
             <Wallet size={18} />
           </div>
           <strong className="money-metric">{money(balance)}</strong>
-          <span className="metric-note">{cash.length} 笔收支 · CNY</span>
+          <span className="metric-note">
+            {t("{count} 笔收支 · CNY", { count: cash.length })}
+          </span>
         </div>
         <div className="metric">
           <div>
-            <span>资源需要关注</span>
+            <span>{t("资源需要关注")}</span>
             <Boxes size={18} />
           </div>
           <strong>
             {low.length}
-            <small>项</small>
+            <small>{t("项")}</small>
           </strong>
-          <span className="metric-note">共管理 {resources.length} 项资源</span>
+          <span className="metric-note">
+            {t("共管理 {count} 项资源", { count: resources.length })}
+          </span>
         </div>
       </section>
       <div className="dashboard-columns">
         <section className="task-section">
           <div className="section-heading">
             <h2>
-              执行清单 <span className="count">{tasks.length}</span>
+              {t("执行清单")} <span className="count">{tasks.length}</span>
             </h2>
             <button
               className="text-button"
               onClick={() => onDialog({ type: "task" })}
             >
               <Plus size={15} />
-              添加
+              {t("添加")}
             </button>
           </div>
           {tasks.length ? (
@@ -148,10 +155,10 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               <table>
                 <thead>
                   <tr>
-                    <th>任务</th>
-                    <th>评价维度</th>
-                    <th>计划日期</th>
-                    <th>状态</th>
+                    <th>{t("任务")}</th>
+                    <th>{t("评价维度")}</th>
+                    <th>{t("计划日期")}</th>
+                    <th>{t("状态")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -161,12 +168,15 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
                         <div className="task-name">
                           <button
                             className={`check-button ${task.status === "done" ? "checked" : ""}`}
-                            title={
+                            title={t(
                               task.status === "done"
                                 ? "重新打开任务"
-                                : "确认完成任务"
-                            }
-                            aria-label={`${task.status === "done" ? "重新打开" : "完成"}：${task.title}`}
+                                : "确认完成任务",
+                            )}
+                            aria-label={t("{action}：{title}", {
+                              action: t(task.status === "done" ? "重新打开" : "完成"),
+                              title: task.title,
+                            })}
                             disabled={busy}
                             onClick={() =>
                               setStatus(task, task.status === "done" ? "todo" : "done")
@@ -188,12 +198,12 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
                         <Values values={task.values} />
                       </td>
                       <td className="muted nowrap">
-                        {prop(task, "due_date") || "未安排"}
+                        {prop(task, "due_date") || t("未安排")}
                       </td>
                       <td>
                         <select
                           className="status-select"
-                          aria-label={`${task.title}的状态`}
+                          aria-label={t("{title}的状态", { title: task.title })}
                           value={task.status}
                           disabled={busy}
                           onChange={(event) =>
@@ -203,7 +213,7 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
                           {["todo", "doing", "done", "cancelled"].map(
                             (value) => (
                               <option key={value} value={value}>
-                                {labels[value]}
+                                {label(value)}
                               </option>
                             ),
                           )}
@@ -215,19 +225,19 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               </table>
             </div>
           ) : (
-            <Empty title="还没有执行任务">
+            <Empty title={t("还没有执行任务")}>
               <button
                 className="text-button"
                 onClick={() => onDialog({ type: "task" })}
               >
-                创建第一项任务
+                {t("创建第一项任务")}
                 <Plus size={15} />
               </button>
             </Empty>
           )}
           <div className="section-heading lower">
-            <h2>人生场景</h2>
-            <span className="section-meta">点选后所有视图按场景筛选</span>
+            <h2>{t("人生场景")}</h2>
+            <span className="section-meta">{t("点选后所有视图按场景筛选")}</span>
           </div>
           <div className="scene-overview">
             {SCENES.map((scene) => (
@@ -238,24 +248,29 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               >
                 <strong>{sceneLabel(scene)}</strong>
                 <span>
-                  {open("task", scene)} 项任务 · {open("relationship", scene)} 段关系
+                  {t("{tasks} 项任务 · {relationships} 段关系", {
+                    tasks: open("task", scene),
+                    relationships: open("relationship", scene),
+                  })}
                 </span>
               </button>
             ))}
           </div>
           <div className="section-heading lower">
-            <h2>四个世界</h2>
-            <span className="section-meta">资源与关系在其中交叉</span>
+            <h2>{t("四个世界")}</h2>
+            <span className="section-meta">{t("资源与关系在其中交叉")}</span>
           </div>
           <div className="world-overview">
             <button onClick={() => go("self")}>
               <span className="world-icon self">
                 <Activity size={23} />
               </span>
-              <strong>自我世界</strong>
-              <span>身体 · 心理 · 认同 · 关系</span>
+              <strong>{t("自我世界")}</strong>
+              <span>{t("身体 · 心理 · 认同 · 关系")}</span>
               <div>
-                {byKind("body_metric").length + byKind("psychological_metric").length} 条观察
+                {t("{count} 条观察", {
+                  count: byKind("body_metric").length + byKind("psychological_metric").length,
+                })}
                 <ArrowUpRight size={16} />
               </div>
             </button>
@@ -263,11 +278,11 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               <span className="world-icon mental">
                 <Brain size={23} />
               </span>
-              <strong>思维世界</strong>
-              <span>原则 · 目标 · 反思</span>
+              <strong>{t("思维世界")}</strong>
+              <span>{t("原则 · 目标 · 反思")}</span>
               <div>
                 <LockKeyhole size={13} />
-                仅本人维护
+                {t("仅本人维护")}
                 <ArrowUpRight size={16} />
               </div>
             </button>
@@ -275,11 +290,12 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               <span className="world-icon digital">
                 <MessageSquare size={23} />
               </span>
-              <strong>数字世界</strong>
-              <span>会话 · 知识 · Agent</span>
+              <strong>{t("数字世界")}</strong>
+              <span>{t("会话 · 知识 · Agent")}</span>
               <div>
-                {byKind("message").filter((e) => prop(e, "role") === "owner").length}{" "}
-                条消息
+                {t("{count} 条消息", {
+                  count: byKind("message").filter((e) => prop(e, "role") === "owner").length,
+                })}
                 <ArrowUpRight size={16} />
               </div>
             </button>
@@ -287,10 +303,10 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               <span className="world-icon physical">
                 <Boxes size={23} />
               </span>
-              <strong>物理世界</strong>
-              <span>物料 · 采购 · 收支</span>
+              <strong>{t("物理世界")}</strong>
+              <span>{t("物料 · 采购 · 收支")}</span>
               <div>
-                {byKind("resource").length} 项资源
+                {t("{count} 项资源", { count: byKind("resource").length })}
                 <ArrowUpRight size={16} />
               </div>
             </button>
@@ -301,12 +317,12 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
             <div className="section-heading">
               <h2>
                 <GitBranch size={17} />
-                执行方向
+                {t("执行方向")}
               </h2>
               <button
                 className="icon-button"
-                title="查看执行方向"
-                aria-label="查看执行方向"
+                title={t("查看执行方向")}
+                aria-label={t("查看执行方向")}
                 onClick={() => go("digital")}
               >
                 <ArrowUpRight size={16} />
@@ -327,9 +343,9 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
             ) : (
               <div className="aside-empty">
                 <LockKeyhole size={22} />
-                <p>尚未发布执行方向</p>
+                <p>{t("尚未发布执行方向")}</p>
                 <button className="text-button" onClick={() => go("mental")}>
-                  打开思维体系
+                  {t("打开思维体系")}
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -339,7 +355,7 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
             <div className="section-heading">
               <h2>
                 <Activity size={17} />
-                需要关注
+                {t("需要关注")}
               </h2>
             </div>
             {low.map((e) => (
@@ -348,8 +364,11 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
                 <div>
                   <strong>{e.title}</strong>
                   <p>
-                    库存 {num(e, "quantity")} {prop(e, "unit")} · 最低{" "}
-                    {num(e, "minimum")}
+                    {t("库存 {quantity} {unit} · 最低 {minimum}", {
+                      quantity: num(e, "quantity"),
+                      unit: t(prop(e, "unit")),
+                      minimum: num(e, "minimum"),
+                    })}
                   </p>
                 </div>
               </div>
@@ -358,13 +377,17 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
               <div className="attention-item" key={r.id}>
                 <span className="coral-dot" />
                 <div>
-                  <strong>{prop(r, "person_name")}</strong>
-                  <p>超过 {num(r, "contact_interval_days")} 天未联系</p>
+                  <strong>{prop(r, "agent_name") || prop(r, "person_name")}</strong>
+                  <p>
+                    {t("超过 {days} 天未联系", {
+                      days: num(r, "contact_interval_days"),
+                    })}
+                  </p>
                 </div>
               </div>
             ))}
             {!low.length && !due.length && (
-              <p className="muted small-text">当前没有库存或联系提醒</p>
+              <p className="muted small-text">{t("当前没有库存或联系提醒")}</p>
             )}
             {proposals.length > 0 && (
               <button
@@ -372,14 +395,16 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
                 onClick={() => go("decisions")}
               >
                 <Sparkles size={17} />
-                {proposals.length} 条建议等待判断
+                {t("{count} 条建议等待判断", { count: proposals.length })}
                 <ArrowRight size={15} />
               </button>
             )}
             {queuedImports.length > 0 && (
               <button className="attention-link" onClick={() => go("digital")}>
                 <UsersRound size={17} />
-                {queuedImports.length} 个 Agent 导入等待本地模型
+                {t("{count} 个 Agent 导入等待本地模型", {
+                  count: queuedImports.length,
+                })}
                 <ArrowRight size={15} />
               </button>
             )}
@@ -388,12 +413,12 @@ export function Dashboard({ ctx }: { ctx: PageContext }) {
             <button
               className="demo-button"
               onClick={() =>
-                void run(() => api("/demo", {}), "已添加业务演示数据")
+                void run(() => api("/demo", {}), t("已添加业务演示数据"))
               }
               disabled={busy}
             >
               <Database size={16} />
-              <span>添加业务演示数据</span>
+              <span>{t("添加业务演示数据")}</span>
               <Plus size={14} />
             </button>
           )}

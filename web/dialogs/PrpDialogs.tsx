@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { api, cents, money, num, prop, today, type Dialog, type Workspace } from "../api";
 import { Modal, SceneInput, SelectField, TextField } from "../components";
+import { t } from "../i18n";
 
 const types = ["location", "supplier", "purchase_order", "order_line", "receive", "pay", "adjust"];
 export const isPrpDialog = (type: string) => types.includes(type);
@@ -58,7 +59,7 @@ export function PrpDialog({
     setError("");
     setBusy(true);
     try {
-      let message = "已保存";
+      let message = t("已保存");
       if (type === "location")
         await api("/entities", {
           kind: "location",
@@ -82,7 +83,7 @@ export function PrpDialog({
         });
       else if (type === "order_line") {
         const item = of("resource").find((r) => r.id === resource);
-        if (!item) throw new Error("请选择物料");
+        if (!item) throw new Error(t("请选择物料"));
         await api("/entities", {
           kind: "purchase_order_line",
           title: `${item.title} × ${quantity}`,
@@ -94,18 +95,18 @@ export function PrpDialog({
             unit_cost_cents: unitCost.trim() ? cents(unitCost) : 0,
           },
         });
-        message = "订单行已添加";
+        message = t("订单行已添加");
       } else if (type === "receive") {
         const chosen = lines
           .map((l) => ({ line_id: l.id, quantity: Number(received[l.id] || 0) }))
           .filter((l) => l.quantity > 0);
-        if (!chosen.length) throw new Error("请填写本次收货数量");
+        if (!chosen.length) throw new Error(t("请填写本次收货数量"));
         await api(`/purchase-orders/${entity!.id}/receive`, {
           lines: chosen,
           note: notes,
           expected_version: entity!.version,
         });
-        message = "收货已入库";
+        message = t("收货已入库");
       } else if (type === "pay") {
         await api(`/purchase-orders/${entity!.id}/pay`, {
           amount_cents: cents(amount),
@@ -113,17 +114,17 @@ export function PrpDialog({
           title: name,
           expected_version: entity!.version,
         });
-        message = "付款已记入现金流水";
+        message = t("付款已记入现金流水");
       } else if (type === "adjust") {
         const delta = Number(counted) - num(entity!, "quantity");
-        if (!Number.isInteger(delta) || delta === 0) throw new Error("盘点数量没有变化");
+        if (!Number.isInteger(delta) || delta === 0) throw new Error(t("盘点数量没有变化"));
         await api(`/resources/${entity!.id}/movement`, {
           delta,
-          reason: notes || "库存盘点",
+          reason: notes || t("库存盘点"),
           movement_type: "adjustment",
           expected_version: entity!.version,
         });
-        message = "盘点差异已过账";
+        message = t("盘点差异已过账");
       }
       await onSaved(message);
     } catch (reason) {
@@ -133,7 +134,7 @@ export function PrpDialog({
     }
   };
   return (
-    <Modal title={titles[type]} onClose={onClose} onSubmit={submit} busy={busy} error={error}>
+    <Modal title={t(titles[type])} onClose={onClose} onSubmit={submit} busy={busy} error={error}>
       {type === "location" && (
         <>
           <TextField label="库位名称" value={name} onChange={setName} placeholder="例如：书房 · 二层柜" />
@@ -174,7 +175,9 @@ export function PrpDialog({
             <TextField label="预计到货" type="date" value={expected} onChange={setExpected} required={false} />
           </div>
           <TextField label="备注" value={notes} onChange={setNotes} maxLength={4000} required={false} />
-          <p className="muted small-text">订单建立后为草稿，添加订单行后再确认下单。</p>
+          <p className="muted small-text">
+            {t("订单建立后为草稿，添加订单行后再确认下单。")}
+          </p>
         </>
       )}
       {["location", "supplier", "purchase_order"].includes(type) && (
@@ -194,7 +197,7 @@ export function PrpDialog({
               if (item && num(item, "reorder_qty") > 0) setQuantity(String(num(item, "reorder_qty")));
             }}
             placeholder="选择物料"
-            options={of("resource").map((r) => ({ value: r.id, label: `${r.title}（${prop(r, "unit")}）` }))}
+            options={of("resource").map((r) => ({ value: r.id, label: `${r.title}（${t(prop(r, "unit"))}）` }))}
           />
           <div className="form-grid">
             <TextField label="数量" type="number" min={1} step={1} value={quantity} onChange={setQuantity} />
@@ -209,7 +212,10 @@ export function PrpDialog({
             .map((l) => (
               <TextField
                 key={l.id}
-                label={`${prop(l, "resource_title") || l.title} 本次收货（未收 ${num(l, "quantity") - num(l, "received_quantity")}）`}
+                label={t("{name} 本次收货（未收 {open}）", {
+                  name: prop(l, "resource_title") || l.title,
+                  open: num(l, "quantity") - num(l, "received_quantity"),
+                })}
                 type="number"
                 min={0}
                 max={num(l, "quantity") - num(l, "received_quantity")}
@@ -220,28 +226,43 @@ export function PrpDialog({
               />
             ))}
           <TextField label="收货备注" value={notes} onChange={setNotes} maxLength={300} required={false} />
-          <p className="muted small-text">每一行生成一条“入库”流水，并按订单单价更新物料成本。</p>
+          <p className="muted small-text">
+            {t("每一行生成一条“入库”流水，并按订单单价更新物料成本。")}
+          </p>
         </>
       )}
       {type === "pay" && (
         <>
           <p className="muted small-text">
-            订单金额 {money(num(entity!, "total_cents"))}，已付 {money(num(entity!, "paid_cents"))}，未付 {money(outstanding)}。
+            {t("订单金额 {total}，已付 {paid}，未付 {open}。", {
+              total: money(num(entity!, "total_cents")),
+              paid: money(num(entity!, "paid_cents")),
+              open: money(outstanding),
+            })}
           </p>
           <div className="form-grid">
             <TextField label="付款金额（元）" value={amount} onChange={setAmount} maxLength={20} />
             <TextField label="付款日期" type="date" value={date} onChange={setDate} />
           </div>
-          <TextField label="摘要" value={name} onChange={setName} required={false} placeholder={`采购付款：${entity?.title}`} />
+          <TextField
+            label="摘要"
+            value={name}
+            onChange={setName}
+            required={false}
+            placeholder={t("采购付款：{title}", { title: entity?.title || "" })}
+          />
         </>
       )}
       {type === "adjust" && (
         <>
           <p className="muted small-text">
-            账面库存 {num(entity!, "quantity")} {prop(entity!, "unit")}。填写实际清点数量，差异记为“盘点调整”流水。
+            {t("账面库存 {quantity} {unit}。填写实际清点数量，差异记为“盘点调整”流水。", {
+              quantity: num(entity!, "quantity"),
+              unit: t(prop(entity!, "unit")),
+            })}
           </p>
           <TextField
-            label={`盘点后数量（${prop(entity!, "unit")}）`}
+            label={t("盘点后数量（{unit}）", { unit: t(prop(entity!, "unit")) })}
             type="number"
             min={0}
             step={1}

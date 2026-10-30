@@ -12,6 +12,7 @@ import {
 import { api, prop, time, type Entity } from "../api";
 import { Empty, Scenes, Values } from "../components";
 import type { PageContext } from "../context";
+import { t } from "../i18n";
 import { AgentHub } from "./AgentHub";
 
 export function Digital({ ctx }: { ctx: PageContext }) {
@@ -31,12 +32,12 @@ export function Digital({ ctx }: { ctx: PageContext }) {
             key={value}
             onClick={() => setTab(value)}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
         <span className="tab-end">
           <span className="mini-dot" />
-          离线助理
+          {t("离线助理")}
         </span>
       </div>
       {tab === "messages" ? (
@@ -46,14 +47,14 @@ export function Digital({ ctx }: { ctx: PageContext }) {
       ) : (
         <>
           <div className="section-heading">
-            <h2>{tab === "note" ? "知识条目" : "已发布的执行方向"}</h2>
+            <h2>{tab === "note" ? t("知识条目") : t("已发布的执行方向")}</h2>
             {tab === "note" && (
               <button
                 className="button secondary"
                 onClick={() => onDialog({ type: "note" })}
               >
                 <Plus size={16} />
-                新建条目
+                {t("新建条目")}
               </button>
             )}
           </div>
@@ -87,7 +88,7 @@ export function Digital({ ctx }: { ctx: PageContext }) {
           {!byKind(tab).length && (
             <Empty
               title={
-                tab === "note" ? "还没有知识条目" : "尚未从思维库发布执行方向"
+                tab === "note" ? t("还没有知识条目") : t("尚未从思维库发布执行方向")
               }
             />
           )}
@@ -134,11 +135,11 @@ function Messenger({ ctx }: { ctx: PageContext }) {
     <div className="messenger">
       <aside className="channels">
         <div className="channel-heading">
-          <span>我的会话</span>
+          <span>{t("我的会话")}</span>
           <button
             className="icon-button"
-            title="新建会话"
-            aria-label="新建会话"
+            title={t("新建会话")}
+            aria-label={t("新建会话")}
             onClick={() => onDialog({ type: "channel" })}
           >
             <Plus size={17} />
@@ -151,7 +152,7 @@ function Messenger({ ctx }: { ctx: PageContext }) {
             onClick={() => setSelected(c.id)}
           >
             <MessageSquare size={18} />
-            <span>{c.title}</span>
+            <span>{t(c.title)}</span>
           </button>
         ))}
       </aside>
@@ -159,9 +160,11 @@ function Messenger({ ctx }: { ctx: PageContext }) {
         <header>
           <div>
             <MessageSquare size={18} />
-            <h2>{channel?.title || "会话"}</h2>
+            <h2>{channel ? t(channel.title) : t("会话")}</h2>
           </div>
-          <span className="section-meta">{messages.length} 条消息</span>
+          <span className="section-meta">
+            {t("{count} 条消息", { count: messages.length })}
+          </span>
         </header>
         <div className="message-list">
           {messages.length ? (
@@ -176,11 +179,11 @@ function Messenger({ ctx }: { ctx: PageContext }) {
                 <span
                   className={`message-avatar ${prop(message, "role") === "owner" ? "" : "assistant-avatar"}`}
                 >
-                  {prop(message, "role") === "owner" ? "我" : <Sparkles size={17} />}
+                  {prop(message, "role") === "owner" ? t("我") : <Sparkles size={17} />}
                 </span>
                 <div>
                   <div className="message-meta">
-                    {prop(message, "role") === "owner" ? "我" : "离线助理 · 规则分析"}
+                    {prop(message, "role") === "owner" ? t("我") : t("离线助理 · 规则分析")}
                     <time>{time(message.created_at)}</time>
                   </div>
                   <div className="message-body">{prop(message, "body")}</div>
@@ -188,16 +191,16 @@ function Messenger({ ctx }: { ctx: PageContext }) {
               </div>
             ))
           ) : (
-            <Empty title="收集一件待办，开始今天的协同" />
+            <Empty title={t("收集一件待办，开始今天的协同")} />
           )}
           <div ref={end} />
         </div>
         <form className="composer" onSubmit={submit}>
           <textarea
-            aria-label="消息内容"
+            aria-label={t("消息内容")}
             required
             maxLength={8000}
-            placeholder="记录一条消息或待办…"
+            placeholder={t("记录一条消息或待办…")}
             value={body}
             onChange={(event) => setBody(event.target.value)}
           />
@@ -209,7 +212,7 @@ function Messenger({ ctx }: { ctx: PageContext }) {
             )}
             <button className="button primary" disabled={busy || !body.trim() || !channel}>
               {busy ? <LoaderCircle className="spin" size={16} /> : <Send size={16} />}
-              发送
+              {t("发送")}
             </button>
           </div>
         </form>

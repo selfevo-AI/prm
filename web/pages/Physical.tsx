@@ -9,9 +9,10 @@ import {
   Scale,
   Wallet,
 } from "lucide-react";
-import { api, labels, money, num, prop, type Entity } from "../api";
+import { api, label, money, num, prop, type Entity } from "../api";
 import { Empty, Scenes, StatusBadge, Values } from "../components";
 import { find, type PageContext } from "../context";
+import { locale, t } from "../i18n";
 
 const tabs = [
   ["resource", "资源台账"],
@@ -50,13 +51,13 @@ export function Physical({ ctx }: { ctx: PageContext }) {
             className={tab === value ? "active" : ""}
             onClick={() => setTab(value)}
           >
-            {title}
+            {t(title)}
           </button>
         ))}
       </div>
       <div className="section-heading">
         <h2>
-          {tabs.find(([value]) => value === tab)![1]}
+          {t(tabs.find(([value]) => value === tab)![1])}
           <span className="count">{list.length}</span>
         </h2>
         {createLabel[tab] && (
@@ -65,14 +66,14 @@ export function Physical({ ctx }: { ctx: PageContext }) {
             onClick={() => onDialog({ type: dialogType[tab]! })}
           >
             <Plus size={16} />
-            {createLabel[tab]}
+            {t(createLabel[tab])}
           </button>
         )}
       </div>
       {tab === "cash_entry" && (
         <div className="cash-summary">
           <span>
-            已记录收入{" "}
+            {t("已记录收入")}{" "}
             <strong>
               {money(
                 list
@@ -82,7 +83,7 @@ export function Physical({ ctx }: { ctx: PageContext }) {
             </strong>
           </span>
           <span>
-            已记录支出{" "}
+            {t("已记录支出")}{" "}
             <strong>
               {money(
                 list
@@ -91,11 +92,11 @@ export function Physical({ ctx }: { ctx: PageContext }) {
               )}
             </strong>
           </span>
-          <span className="muted">人民币 CNY</span>
+          <span className="muted">{t("人民币 CNY")}</span>
         </div>
       )}
       {!list.length ? (
-        <Empty title="还没有相关记录" />
+        <Empty title={t("还没有相关记录")} />
       ) : tab === "purchase_order" ? (
         <Orders ctx={ctx} orders={list} />
       ) : (
@@ -106,10 +107,10 @@ export function Physical({ ctx }: { ctx: PageContext }) {
               <>
                 <thead>
                   <tr>
-                    <th>库位</th>
-                    <th>编码</th>
-                    <th>上级库位</th>
-                    <th>存放资源</th>
+                    <th>{t("库位")}</th>
+                    <th>{t("编码")}</th>
+                    <th>{t("上级库位")}</th>
+                    <th>{t("存放资源")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -130,11 +131,11 @@ export function Physical({ ctx }: { ctx: PageContext }) {
               <>
                 <thead>
                   <tr>
-                    <th>供应商</th>
-                    <th>联系方式</th>
-                    <th>税号</th>
-                    <th>供应物料</th>
-                    <th>采购订单</th>
+                    <th>{t("供应商")}</th>
+                    <th>{t("联系方式")}</th>
+                    <th>{t("税号")}</th>
+                    <th>{t("供应物料")}</th>
+                    <th>{t("采购订单")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -158,34 +159,39 @@ export function Physical({ ctx }: { ctx: PageContext }) {
               <>
                 <thead>
                   <tr>
-                    <th>时间</th>
-                    <th>资源</th>
-                    <th>类型</th>
-                    <th>摘要</th>
-                    <th>变动数量</th>
-                    <th>结存数量</th>
+                    <th>{t("时间")}</th>
+                    <th>{t("资源")}</th>
+                    <th>{t("类型")}</th>
+                    <th>{t("摘要")}</th>
+                    <th>{t("变动数量")}</th>
+                    <th>{t("结存数量")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {list.map((e) => (
                     <tr key={e.id}>
                       <td className="muted nowrap">
-                        {new Date(e.created_at).toLocaleString("zh-CN", {
-                          month: "2-digit",
-                          day: "2-digit",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {new Date(e.created_at).toLocaleString(
+                          locale() === "zh" ? "zh-CN" : "en-US",
+                          {
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          },
+                        )}
                       </td>
-                      <td>{find(entities, prop(e, "resource_id"))?.title || "未知资源"}</td>
-                      <td>{labels[prop(e, "movement_type")] || (num(e, "delta") > 0 ? "入库" : "出库")}</td>
+                      <td>{find(entities, prop(e, "resource_id"))?.title || t("未知资源")}</td>
+                      <td>
+                        {movementLabel(e)}
+                      </td>
                       <td>{e.title}</td>
                       <td className={num(e, "delta") > 0 ? "green" : "coral"}>
                         {num(e, "delta") > 0 ? "+" : ""}
-                        {num(e, "delta")} {prop(e, "unit")}
+                        {num(e, "delta")} {t(prop(e, "unit"))}
                       </td>
                       <td>
-                        {num(e, "balance")} {prop(e, "unit")}
+                        {num(e, "balance")} {t(prop(e, "unit"))}
                       </td>
                     </tr>
                   ))}
@@ -196,11 +202,11 @@ export function Physical({ ctx }: { ctx: PageContext }) {
               <>
                 <thead>
                   <tr>
-                    <th>日期</th>
-                    <th>摘要</th>
-                    <th>分类</th>
-                    <th>评价维度</th>
-                    <th>金额</th>
+                    <th>{t("日期")}</th>
+                    <th>{t("摘要")}</th>
+                    <th>{t("分类")}</th>
+                    <th>{t("评价维度")}</th>
+                    <th>{t("金额")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -234,18 +240,27 @@ export function Physical({ ctx }: { ctx: PageContext }) {
   );
 }
 
+function movementLabel(e: Entity) {
+  const type = prop(e, "movement_type");
+  return type
+    ? label(type)
+    : num(e, "delta") > 0
+      ? t("入库")
+      : t("出库");
+}
+
 function ResourceRows({ list, ctx }: { list: Entity[]; ctx: PageContext }) {
   const { onDialog } = ctx;
   return (
     <>
       <thead>
         <tr>
-          <th>资源名称</th>
-          <th>位置</th>
-          <th>可用库存</th>
-          <th>最低库存</th>
-          <th>评价维度</th>
-          <th>出入库</th>
+          <th>{t("资源名称")}</th>
+          <th>{t("位置")}</th>
+          <th>{t("可用库存")}</th>
+          <th>{t("最低库存")}</th>
+          <th>{t("评价维度")}</th>
+          <th>{t("出入库")}</th>
         </tr>
       </thead>
       <tbody>
@@ -264,7 +279,9 @@ function ResourceRows({ list, ctx }: { list: Entity[]; ctx: PageContext }) {
                     {e.title}
                   </button>
                   <div className="resource-meta">
-                    {prop(e, "item_type") === "asset" && <span className="tag">资产</span>}
+                    {prop(e, "item_type") === "asset" && (
+                      <span className="tag">{label(prop(e, "item_type"))}</span>
+                    )}
                     {prop(e, "sku") && <span className="mono muted">{prop(e, "sku")}</span>}
                     {prop(e, "supplier") && <span className="muted">{prop(e, "supplier")}</span>}
                   </div>
@@ -276,7 +293,7 @@ function ResourceRows({ list, ctx }: { list: Entity[]; ctx: PageContext }) {
               <strong className={num(e, "quantity") < num(e, "minimum") ? "coral" : ""}>
                 {num(e, "quantity")}
               </strong>{" "}
-              <span className="muted">{prop(e, "unit")}</span>
+              <span className="muted">{t(prop(e, "unit"))}</span>
             </td>
             <td>{num(e, "minimum")}</td>
             <td>
@@ -286,24 +303,24 @@ function ResourceRows({ list, ctx }: { list: Entity[]; ctx: PageContext }) {
               <div className="row-actions">
                 <button
                   className="icon-button outlined"
-                  title="入库"
-                  aria-label={`${e.title}入库`}
+                  title={t("入库")}
+                  aria-label={t("{title}入库", { title: e.title })}
                   onClick={() => onDialog({ type: "movement", entity: e, delta: 1 })}
                 >
                   <ArrowDownLeft size={17} />
                 </button>
                 <button
                   className="icon-button outlined"
-                  title="出库"
-                  aria-label={`${e.title}出库`}
+                  title={t("出库")}
+                  aria-label={t("{title}出库", { title: e.title })}
                   onClick={() => onDialog({ type: "movement", entity: e, delta: -1 })}
                 >
                   <ArrowUpRight size={17} />
                 </button>
                 <button
                   className="icon-button outlined"
-                  title="盘点"
-                  aria-label={`${e.title}盘点`}
+                  title={t("盘点")}
+                  aria-label={t("{title}盘点", { title: e.title })}
                   onClick={() => onDialog({ type: "adjust", entity: e })}
                 >
                   <Scale size={16} />
@@ -349,8 +366,9 @@ function Orders({ ctx, orders }: { ctx: PageContext; orders: Entity[] }) {
                 <span className="muted small-text">
                   {prop(order, "supplier") ||
                     find(entities, prop(order, "supplier_id"))?.title ||
-                    "未指定供应商"}
-                  {prop(order, "expected_date") && ` · 预计 ${prop(order, "expected_date")}`}
+                    t("未指定供应商")}
+                  {prop(order, "expected_date") &&
+                    t(" · 预计 {date}", { date: prop(order, "expected_date") })}
                 </span>
               </div>
               <StatusBadge status={status} />
@@ -360,11 +378,11 @@ function Orders({ ctx, orders }: { ctx: PageContext; orders: Entity[] }) {
                 <table>
                   <thead>
                     <tr>
-                      <th>物料</th>
-                      <th>订购</th>
-                      <th>已收</th>
-                      <th>单价</th>
-                      <th>小计</th>
+                      <th>{t("物料")}</th>
+                      <th>{t("订购", undefined, "Ordered")}</th>
+                      <th>{t("已收")}</th>
+                      <th>{t("单价")}</th>
+                      <th>{t("小计")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -372,7 +390,7 @@ function Orders({ ctx, orders }: { ctx: PageContext; orders: Entity[] }) {
                       <tr key={line.id}>
                         <td>{prop(line, "resource_title") || line.title}</td>
                         <td>
-                          {num(line, "quantity")} {prop(line, "unit")}
+                          {num(line, "quantity")} {t(prop(line, "unit"))}
                         </td>
                         <td className={num(line, "received_quantity") >= num(line, "quantity") ? "green" : ""}>
                           {num(line, "received_quantity")}
@@ -385,14 +403,14 @@ function Orders({ ctx, orders }: { ctx: PageContext; orders: Entity[] }) {
                 </table>
               </div>
             ) : (
-              <p className="muted small-text">尚未添加订单行</p>
+              <p className="muted small-text">{t("尚未添加订单行")}</p>
             )}
             <div className="order-totals">
               <span>
-                订单金额 <strong>{money(total)}</strong>
+                {t("订单金额")} <strong>{money(total)}</strong>
               </span>
               <span>
-                已付款 <strong>{money(paid)}</strong>
+                {t("已付款")} <strong>{money(paid)}</strong>
               </span>
               <Scenes scenes={order.scenes} />
             </div>
@@ -401,40 +419,40 @@ function Orders({ ctx, orders }: { ctx: PageContext; orders: Entity[] }) {
                 <>
                   <button className="button secondary" disabled={busy} onClick={() => onDialog({ type: "order_line", entity: order })}>
                     <Plus size={14} />
-                    添加订单行
+                    {t("添加订单行")}
                   </button>
-                  <button className="button secondary" disabled={busy} onClick={() => setStatus(order, "cancelled", "采购订单已取消")}>
-                    取消订单
+                  <button className="button secondary" disabled={busy} onClick={() => setStatus(order, "cancelled", t("采购订单已取消"))}>
+                    {t("取消订单")}
                   </button>
                   <button
                     className="button primary"
                     disabled={busy || !lines.length}
-                    onClick={() => setStatus(order, "ordered", "已确认下单")}
+                    onClick={() => setStatus(order, "ordered", t("已确认下单"))}
                   >
-                    确认下单
+                    {t("确认下单")}
                   </button>
                 </>
               )}
               {["ordered", "partially_received"].includes(status) && (
                 <button className="button primary" disabled={busy} onClick={() => onDialog({ type: "receive", entity: order })}>
                   <PackageCheck size={14} />
-                  收货
+                  {t("收货", undefined, "Receive")}
                 </button>
               )}
               {status === "ordered" && received && paid === 0 && (
-                <button className="button secondary" disabled={busy} onClick={() => setStatus(order, "cancelled", "采购订单已取消")}>
-                  取消订单
+                <button className="button secondary" disabled={busy} onClick={() => setStatus(order, "cancelled", t("采购订单已取消"))}>
+                  {t("取消订单")}
                 </button>
               )}
               {["ordered", "partially_received", "received", "closed"].includes(status) && paid < total && (
                 <button className="button secondary" disabled={busy} onClick={() => onDialog({ type: "pay", entity: order })}>
                   <Wallet size={14} />
-                  付款
+                  {t("付款", undefined, "Pay")}
                 </button>
               )}
               {["ordered", "partially_received", "received"].includes(status) && (
-                <button className="button secondary" disabled={busy} onClick={() => setStatus(order, "closed", "采购订单已完结")}>
-                  完结
+                <button className="button secondary" disabled={busy} onClick={() => setStatus(order, "closed", t("采购订单已完结"))}>
+                  {t("完结")}
                 </button>
               )}
             </footer>

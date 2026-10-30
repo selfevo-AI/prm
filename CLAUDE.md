@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-PRM (个人资源与关系管理, v0.4) is a local-first, single-owner steward for personal Resources and Relations. A Rust/Axum server listens on 127.0.0.1, stores data in PostgreSQL, and serves a React 19 + Vite UI in Simplified Chinese.
+PRM (个人资源与关系管理, v0.5) is a local-first, single-owner steward for personal Resources and Relations. A Rust/Axum server listens on 127.0.0.1, stores data in PostgreSQL, and serves a React 19 + Vite UI in Simplified Chinese (default) and English. Licensed under MIT (`LICENSE`).
 - **Concept:** it implements the "three worlds" model from `Three_Worlds_Economic_Model_AI_and_Embodied_Intelligence_EN.docx`, extended with a self world. `docs/ARCHITECTURE.md` maps the paper to concrete constraints.
 - **Specs:** the Chinese docs in `docs/` are the spec.
   - `docs/SECURITY.md`: auth, actors and vault rules.
   - `docs/ONTOLOGY-API.md`: classes, predicates, endpoints, candidate contract.
   - `docs/SELF-MODEL.md`: the psychological instrument catalog.
-  - `docs/AGENT-INTEGRATION.md`, `docs/agent-openapi.json`: the external-agent API.
+  - `docs/AGENT-INTEGRATION.md`, `docs/agent-openapi.json`: the external-agent API (English edition: `docs/AGENT-INTEGRATION.en.md`; project README English edition: `README.en.md`).
   - `docs/LOCAL-AI.md`: router and executor.
 
 This directory is not a git repo, so search tools don't apply `.gitignore`. Scope searches to `src/ web/ tests/ e2e/ scripts/ migrations/ docs/` so they don't crawl `.tools/`, `node_modules/` and `target/`.
@@ -36,7 +36,7 @@ cargo build --locked
   - Without `-Build` it reuses the existing binaries.
   - `-ModelWorker` generates a per-run `PRM_AGENT_TOKEN` and also starts `scripts/prm-model-worker.mjs`.
   - The default `data/` dir maps to the owner's real workspace.
-- **E2E** (`e2e/workspace.spec.ts`, two serial tests; the second logs into the account the first creates):
+- **E2E** (`e2e/workspace.spec.ts`, three serial tests; the second and third log into the account the first creates, and the third switches the UI to English):
   - Build first with `npm.cmd run build` and `cargo build`; `scripts/test-server.mjs` runs the existing `target/debug/prm.exe` on port 4318 with a fresh `test-data/e2e-*` dir.
   - Run with `npm.cmd run test:e2e`.
 - **Scripts:** `scripts/prm-model-worker.mjs` is the local model executor (Ollama or an OpenAI-compatible server, loopback only). `scripts/prm-mcp.mjs` is the dependency-free MCP stdio bridge for external agents (`PRM_CONNECTION_TOKEN`).
@@ -57,7 +57,7 @@ cargo build --locked
 - Request signing has three implementations that must agree: `src/security.rs::verify`, `web/security.ts`, and the helpers in `tests/common/mod.rs`. So owner endpoints can't be called with plain curl.
 
 ### Ontology registry (`src/ontology.rs`): the single source of truth
-- `CLASSES` holds a `ClassDef` per entity kind: label, REA category, worlds, default scenes, authority.
+- `CLASSES` holds a `ClassDef` per entity kind: label, REA category, worlds, default scenes, authority. `ai_agent` (digital world) is created only through the agent connection flow.
 - `PREDICATES` holds a `PredicateDef` per relation: layer, `owner_settable`, `agent_proposable`, and a list of domain→range `signatures`.
 - `relation_valid()`, `worlds()`, `scenes_for()` and `schema()` (sent to the UI) are derived from these. `Store::open` runs `sync_sql()` after `migrations/002_postgresql.sql` to sync `ontology_classes` and `relations_predicate_check`, so don't hand-edit those lists in SQL.
 - **Adding a kind:**
@@ -85,15 +85,16 @@ cargo build --locked
   - The purchase order state machine `draft → ordered → partially_received → received → closed / cancelled`. `active` is the legacy draft status, and lines can only be added to drafts.
   - Goods receipt posts `receipt` movements linked by `receives`; payment posts a `cash_entry` linked by `pays`, capped at the outstanding amount. `post_movement` is the only way stock changes.
 - `self_model.rs`: the static `INSTRUMENTS` catalog holds metadata and citations only, never item text. `/api/self/assessments` validates scores against the ranges. It also covers identity (TST) statements, self-relation `STANCES`, per-record `agent_visible`, and `/api/self/agent-preview`. Never compute composite scores.
-- `relationships.rs`: person / relationship (IOS closeness, RAS satisfaction, contact rhythm) / interaction ledger. `contact_due` feeds the analyzer.
+- `relationships.rs`: person / relationship (IOS closeness, RAS satisfaction, contact rhythm) / interaction ledger. AI-agent relations use `ai_*` types (`ai_assistant`/`ai_companion`/`ai_mentor`) and `party_kind: "ai_agent"` with `agent_id`/`agent_name`; the human flow (`POST /api/relationships`) rejects AI types. `contact_due` feeds the analyzer.
 - `analysis.rs`: the unified decision layer.
   - Analyzer rules (`low_stock`, `owner_message`, `contact_due`, `warranty`) dedupe per (source, version, rule).
   - `stage_candidates` validates agent/model `Candidate`s into pending proposals. Entities are staged before relations so a relation can reference `#ref`.
   - `decide` dispatches on `proposal.action`: `create_task`, `create_entity` (re-runs `insert_entity`), or `create_relation` (a `#ref` must already be approved).
   - The source version is re-checked except for immutable `agent_import` sources.
 - `agents/`:
-  - `credentials`: issue/revoke external tokens.
-  - `gateway`: `/api/agent/import` takes PRM items or OpenAI-style `messages`; it stores an immutable `agent_import` and dispatches it.
+  - `credentials`: issue/revoke external tokens. Issuing a token (owner route `/api/agents/connections`) also registers an `ai_agent` entity and opens a self–agent `relationship` (connecting an agent *is* establishing the relation); the credential row keeps the entity id.
+  - `registry`: platform presets (Grok, Claude, ChatGPT, Gemini, Copilot, Muse, DeepSeek, Qwen, Kimi, Dify, n8n, LangChain, Cursor, Cline, custom), connection snippets, `ai_agent` property validation.
+  - `gateway`: `/api/agent/import` takes PRM items or OpenAI-style `messages`; it stores an immutable `agent_import`, links it to the agent entity via `from_agent`, and dispatches it.
   - `router`: loopback-only `model_endpoint`s, priority `route_rule`s, and `principles_context` (active directives + agent-visible self entities, **never the vault**).
   - `executor`: offline rules run synchronously; model runs are `agent_run` entities that the worker claims under a 300 s lease (max 3 attempts, `contract: prm-run-v2`).
   - The server itself makes no outbound calls.
@@ -115,10 +116,12 @@ cargo build --locked
   - Everything stays on loopback.
 
 ### Frontend (`web/`)
-- `App.tsx` is the shell: auth, a 9-item nav, the global scene filter, and dialogs. Pages live in `web/pages/*` and receive a `PageContext` (`web/context.ts`) with `filter` (search + scene), `run` (mutate → refresh → toast), `onDialog`, and so on.
+- `App.tsx` is the shell: auth, a 9-item nav, the global scene filter, the locale switcher and dialogs. Pages live in `web/pages/*` and receive a `PageContext` (`web/context.ts`) with `filter` (search + scene), `run` (mutate → refresh → toast), `onDialog`, and so on.
+- **i18n:** UI strings are written in Simplified Chinese and translated at render time with `t()` (`web/i18n.tsx`); the English dictionary is keyed by the Chinese source text in `web/en.ts` (`t(zh, vars?, en?)`— the third argument overrides entries whose Chinese source is ambiguous, e.g. the 收货 predicate vs. its button). Default locale is zh; the choice persists in `localStorage`. `App` and `SharedVault` subscribe via `useT()` so the whole tree re-renders on a switch (no memoization anywhere).
 - The whole `GET /api/workspace` is fetched on login, after each mutation, and on navigation.
 - Dialogs: `Editor.tsx` handles the generic and vault dialogs; `dialogs/PrpDialogs.tsx` and `dialogs/RelationDialogs.tsx` handle the new flows, dispatched by `dialog.type`.
 - `api()` paths are relative to `/api` and every call except `/auth/status` is signed. `/shared` is the grant recipient page.
 - E2E finds elements by zh-CN accessible names and labels, and checks for no horizontal overflow at 360–1440 px. Two constraints follow:
   - `labels.resource` must stay "资源", because relation selects use "资源 · …".
   - In dialogs with a password confirmation, scene/value checkboxes must come before the confirmation checkbox.
+  - The default locale must stay zh so the existing zh assertions keep passing; a third E2E test exercises the English switch.

@@ -8,22 +8,43 @@ import {
   ShieldCheck,
   Waypoints,
 } from "lucide-react";
-import { api, labels, num, prop, sceneLabel, SCENES, time, type Entity } from "../api";
-import { Empty, Scenes, SelectField, StatusBadge, TextField } from "../components";
+import { api, label, num, prop, sceneLabel, SCENES, time, type Entity } from "../api";
+import { Empty, Scenes, SelectField, StatusBadge, SceneInput, TextField } from "../components";
 import type { PageContext } from "../context";
+import { t } from "../i18n";
 
 interface Connection {
   id: string;
   name: string;
   protocol: string;
+  platform: string;
+  platform_label: string;
+  scenes: string[];
+  agent_id: string;
+  relationship_id: string;
+  relationship_status: string;
   created_at: string;
   active: boolean;
   revoked_at: string | null;
   last_used_at: string | null;
 }
+interface PlatformPreset {
+  id: string;
+  label: string;
+  protocol: string;
+  docs: string;
+  hint: string;
+}
+interface RelationType {
+  id: string;
+  label: string;
+  scene: string;
+}
 interface Connections {
   connections: Connection[];
   protocols: { id: string; label: string }[];
+  platforms: PlatformPreset[];
+  agent_relationship_types: RelationType[];
   executor_configured: boolean;
 }
 const itemKinds: Record<string, string> = {
@@ -36,9 +57,15 @@ const itemKinds: Record<string, string> = {
 };
 
 export function AgentHub({ ctx }: { ctx: PageContext }) {
-  const { byKind, run, busy, fail, go } = ctx;
+  const { byKind, run, busy, fail, go, notify } = ctx;
   const [data, setData] = useState<Connections | null>(null);
-  const [issued, setIssued] = useState<{ name: string; token: string; protocol: string } | null>(null);
+  const [issued, setIssued] = useState<{
+    name: string;
+    token: string;
+    protocol: string;
+    platform: string;
+    snippet: string;
+  } | null>(null);
   const load = useCallback(async () => {
     setData(await api<Connections>("/agents/connections"));
   }, []);
@@ -59,11 +86,22 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
           status: entity.status === "active" ? "disabled" : "active",
           expected_version: entity.version,
         }),
-      entity.status === "active" ? "已停用" : "已启用",
+      entity.status === "active" ? t("已停用") : t("已启用"),
     );
+  const platform = (id: string) =>
+    data?.platforms.find((p) => p.id === id);
+  const preset = issued ? platform(issued.platform) : undefined;
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      notify(t("已复制接入片段"));
+    } catch {
+      notify(t("复制失败，请手动选择文本"));
+    }
+  };
   return (
     <div className="agent-hub">
-      <section className="pipeline" aria-label="Agent 处理流程">
+      <section className="pipeline" aria-label={t("Agent 处理流程")}>
         {[
           ["外部 Agent", "HTTP / MCP 导入"],
           ["导入信封", "原样保存，只追加"],
@@ -73,8 +111,8 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
           ["本人审核", "采纳后纳入本体"],
         ].map(([title, detail], index) => (
           <div key={title} className="pipeline-step">
-            <strong>{title}</strong>
-            <span>{detail}</span>
+            <strong>{t(title)}</strong>
+            <span>{t(detail)}</span>
             {index < 5 && <ArrowRight size={14} className="pipeline-arrow" />}
           </div>
         ))}
@@ -84,19 +122,24 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
           <div className="section-heading">
             <h2>
               <KeyRound size={16} />
-              外部 Agent 连接
+              {t("外部 Agent 连接")}
             </h2>
-            <span className="section-meta">只能导入待审信息</span>
+            <span className="section-meta">{t("只能导入待审信息")}</span>
           </div>
           <ConnectionForm
+            platforms={data?.platforms || []}
             protocols={data?.protocols || []}
+            types={data?.agent_relationship_types || []}
             busy={busy}
             onIssued={async (body) => {
               try {
-                const created = await api<{ token: string; name: string; protocol: string }>(
-                  "/agents/connections",
-                  body,
-                );
+                const created = await api<{
+                  token: string;
+                  name: string;
+                  protocol: string;
+                  platform: string;
+                  snippet: string;
+                }>("/agents/connections", body);
                 setIssued(created);
                 await load();
                 await ctx.refresh();
@@ -107,16 +150,33 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
           />
           {issued && (
             <div className="token-box" role="note">
-              <strong>“{issued.name}”的令牌只显示这一次</strong>
+              <strong>
+                {t("“{name}”的令牌只显示这一次", { name: issued.name })}
+              </strong>
               <code>{issued.token}</code>
               <p className="muted small-text">
-                {issued.protocol === "mcp"
-                  ? "在 Claude Desktop、Cursor 等客户端的 MCP 配置中运行 node scripts/prm-mcp.mjs，并把它设为环境变量 PRM_CONNECTION_TOKEN。"
-                  : "HTTP 调用：POST /api/agent/import，请求头 Authorization: Bearer <令牌> 与 X-PRM-Request: 1；接口说明见 docs/agent-openapi.json。"}
+                {preset ? t(preset.hint) : t("把它配置到外部 Agent 的导入设置中。")}
+                {preset?.docs ? (
+                  <>
+                    {" "}
+                    <a href={preset.docs} target="_blank" rel="noreferrer">
+                      {t("平台文档")}
+                    </a>
+                  </>
+                ) : null}
               </p>
-              <button className="text-button" onClick={() => setIssued(null)}>
-                我已保存，隐藏令牌
-              </button>
+              <pre className="snippet-text">{issued.snippet}</pre>
+              <div className="token-actions">
+                <button
+                  className="text-button"
+                  onClick={() => void copy(issued.snippet)}
+                >
+                  {t("复制接入片段")}
+                </button>
+                <button className="text-button" onClick={() => setIssued(null)}>
+                  {t("我已保存，隐藏令牌")}
+                </button>
+              </div>
             </div>
           )}
           {data?.connections.length ? (
@@ -126,23 +186,41 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                   <div>
                     <strong>{c.name}</strong>
                     <span className="muted small-text">
-                      {data.protocols.find((p) => p.id === c.protocol)?.label || c.protocol}
+                      {(c.platform_label && t(c.platform_label)) ||
+                        label(c.platform) ||
+                        t("自定义 / 通用")}
                       {" · "}
-                      {c.last_used_at ? `最近使用 ${time(c.last_used_at)}` : "尚未使用"}
+                      {label(c.protocol)}
+                      {" · "}
+                      {c.last_used_at
+                        ? t("最近使用 {at}", { at: time(c.last_used_at) })
+                        : t("尚未使用")}
+                    </span>
+                    <span className="connection-scenes">
+                      <Scenes scenes={c.scenes} />
+                      {c.relationship_id && (
+                        <button
+                          className="text-button"
+                          onClick={() => go("relations")}
+                        >
+                          {t("在关系网络中查看")}
+                        </button>
+                      )}
                     </span>
                   </div>
                   {c.active ? (
                     <button
                       className="button secondary"
                       disabled={busy}
-                      aria-label={`撤销${c.name}的令牌`}
+                      aria-label={t("撤销{name}的令牌", { name: c.name })}
                       onClick={() =>
-                        void run(() => api("/agents/connections/revoke", { id: c.id }), "令牌已撤销").then(
-                          () => load(),
-                        )
+                        void run(
+                          () => api("/agents/connections/revoke", { id: c.id }),
+                          t("令牌已撤销"),
+                        ).then(() => load())
                       }
                     >
-                      撤销
+                      {t("撤销")}
                     </button>
                   ) : (
                     <StatusBadge status="revoked" />
@@ -151,20 +229,22 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
               ))}
             </ul>
           ) : (
-            <p className="muted small-text">还没有外部 Agent 连接。</p>
+            <p className="muted small-text">{t("还没有外部 Agent 连接。")}</p>
           )}
         </section>
         <section className="panel hub-panel">
           <div className="section-heading">
             <h2>
               <Cpu size={16} />
-              本地模型
+              {t("本地模型")}
             </h2>
-            <span className="section-meta">只允许本机回环地址</span>
+            <span className="section-meta">{t("只允许本机回环地址")}</span>
           </div>
           <ModelForm
             busy={busy}
-            onCreate={(body) => run(() => api("/agents/models", body), "本地模型已登记")}
+            onCreate={(body) =>
+              run(() => api("/agents/models", body), t("本地模型已登记"))
+            }
           />
           {models.length ? (
             <ul className="hub-list">
@@ -173,28 +253,33 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                   <div>
                     <strong>{m.title}</strong>
                     <span className="muted small-text">
-                      {labels[prop(m, "provider")]} · {prop(m, "model")} · {prop(m, "base_url")}
+                      {label(prop(m, "provider"))} · {prop(m, "model")} · {prop(m, "base_url")}
                     </span>
                   </div>
                   <button
                     className="button secondary"
                     disabled={busy}
-                    aria-label={`${m.status === "active" ? "停用" : "启用"}${m.title}`}
+                    aria-label={t("{action}：{name}", {
+                      action: t(m.status === "active" ? "停用" : "启用"),
+                      name: m.title,
+                    })}
                     onClick={() => toggle(m)}
                   >
-                    {m.status === "active" ? "停用" : "启用"}
+                    {t(m.status === "active" ? "停用" : "启用")}
                   </button>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted small-text">尚未登记本地模型，所有导入由离线规则处理。</p>
+            <p className="muted small-text">
+              {t("尚未登记本地模型，所有导入由离线规则处理。")}
+            </p>
           )}
           <div className={`executor-state ${data?.executor_configured ? "ready" : ""}`}>
             <ShieldCheck size={15} />
             {data?.executor_configured
-              ? "执行器令牌已配置：运行 node scripts/prm-model-worker.mjs 领取排队任务"
-              : "未配置执行器：设置 PRM_AGENT_TOKEN 后重启服务（或使用 Start-PRM.ps1 -ModelWorker）"}
+              ? t("执行器令牌已配置：运行 node scripts/prm-model-worker.mjs 领取排队任务")
+              : t("未配置执行器：设置 PRM_AGENT_TOKEN 后重启服务（或使用 Start-PRM.ps1 -ModelWorker）")}
           </div>
         </section>
       </div>
@@ -202,25 +287,27 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
         <div className="section-heading">
           <h2>
             <Route size={16} />
-            路由规则
+            {t("路由规则")}
           </h2>
-          <span className="section-meta">优先级高者先匹配；都不匹配时使用离线规则</span>
+          <span className="section-meta">
+            {t("优先级高者先匹配；都不匹配时使用离线规则")}
+          </span>
         </div>
         <RouteForm
           busy={busy}
           connections={data?.connections.filter((c) => c.active) || []}
           models={models.filter((m) => m.status === "active")}
-          onCreate={(body) => run(() => api("/agents/routes", body), "路由规则已添加")}
+          onCreate={(body) => run(() => api("/agents/routes", body), t("路由规则已添加"))}
         />
         <div className="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>规则</th>
-                <th>优先级</th>
-                <th>匹配条件</th>
-                <th>执行方式</th>
-                <th>状态</th>
+                <th>{t("规则")}</th>
+                <th>{t("优先级")}</th>
+                <th>{t("匹配条件")}</th>
+                <th>{t("执行方式")}</th>
+                <th>{t("状态")}</th>
               </tr>
             </thead>
             <tbody>
@@ -230,12 +317,15 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                   <td>{num(r, "priority")}</td>
                   <td>
                     {[
-                      prop(r, "agent_name") && `Agent：${prop(r, "agent_name")}`,
-                      prop(r, "scene") && `场景：${sceneLabel(prop(r, "scene"))}`,
-                      prop(r, "item_kind") && `类型：${itemKinds[prop(r, "item_kind")]}`,
+                      prop(r, "agent_name") &&
+                        t("Agent：{value}", { value: prop(r, "agent_name") }),
+                      prop(r, "scene") &&
+                        t("场景：{value}", { value: sceneLabel(prop(r, "scene")) }),
+                      prop(r, "item_kind") &&
+                        t("类型：{value}", { value: t(itemKinds[prop(r, "item_kind")]) }),
                     ]
                       .filter(Boolean)
-                      .join("；") || "全部导入"}
+                      .join(t("；")) || t("全部导入")}
                   </td>
                   <td>{prop(r, "executor_title")}</td>
                   <td>
@@ -243,7 +333,10 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                       className="text-button"
                       disabled={busy}
                       onClick={() => toggle(r)}
-                      aria-label={`${r.status === "active" ? "停用" : "启用"}规则${r.title}`}
+                      aria-label={t("{action}：{name}", {
+                        action: t(r.status === "active" ? "停用" : "启用"),
+                        name: r.title,
+                      })}
                     >
                       <StatusBadge status={r.status} />
                     </button>
@@ -251,10 +344,10 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                 </tr>
               ))}
               <tr>
-                <td>默认</td>
+                <td>{t("默认")}</td>
                 <td>—</td>
-                <td>未匹配任何规则</td>
-                <td>离线规则</td>
+                <td>{t("未匹配任何规则")}</td>
+                <td>{t("离线规则")}</td>
                 <td>
                   <StatusBadge status="active" />
                 </td>
@@ -267,11 +360,11 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
         <div className="section-heading">
           <h2>
             <Waypoints size={16} />
-            导入记录
+            {t("导入记录")}
             <span className="count">{imports.length}</span>
           </h2>
           <button className="text-button" onClick={() => go("decisions")}>
-            到决策中心审核
+            {t("到决策中心审核")}
             <ArrowRight size={14} />
           </button>
         </div>
@@ -288,21 +381,28 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                     <span>
                       <strong>{i.title}</strong>
                       <small className="muted">
-                        {time(String(i.properties.received_at || i.created_at))} · {items.length} 项 ·{" "}
-                        {route.executor === "model" ? `本地模型 ${String(route.model)}` : "离线规则"}
-                        {mine.length > 0 && ` · ${mine.filter((p) => p.status === "pending").length}/${mine.length} 条待审`}
+                        {time(String(i.properties.received_at || i.created_at))} ·{" "}
+                        {t("{count} 项", { count: items.length })} ·{" "}
+                        {route.executor === "model"
+                          ? t("本地模型 {name}", { name: String(route.model) })
+                          : t("离线规则")}
+                        {mine.length > 0 &&
+                          ` · ${t("{pending}/{total} 条待审", {
+                            pending: mine.filter((p) => p.status === "pending").length,
+                            total: mine.length,
+                          })}`}
                       </small>
                     </span>
                     <Scenes scenes={i.scenes} />
                     <StatusBadge status={i.status} />
                   </summary>
-                  {route.note && <p className="muted small-text">{route.note}</p>}
+                  {route.note && <p className="muted small-text">{t(route.note)}</p>}
                   <ul>
                     {items.map((item, index) => (
                       <li key={index}>
-                        <span className="tag">{itemKinds[String(item.kind)] || String(item.kind)}</span>
+                        <span className="tag">{t(itemKinds[String(item.kind)] || String(item.kind))}</span>
                         {String(item.title || "") ||
-                          `${String(item.subject)} —${labels[String(item.predicate)] || String(item.predicate)}→ ${String(item.object)}`}
+                          `${String(item.subject)} —${label(String(item.predicate))}→ ${String(item.object)}`}
                         {item.body ? <span className="muted"> · {String(item.body).slice(0, 120)}</span> : null}
                       </li>
                     ))}
@@ -312,7 +412,7 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
             })}
           </div>
         ) : (
-          <Empty title="还没有外部 Agent 导入" />
+          <Empty title={t("还没有外部 Agent 导入")} />
         )}
       </section>
       {runs.length > 0 && (
@@ -320,19 +420,21 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
           <div className="section-heading">
             <h2>
               <Cpu size={16} />
-              路由运行
+              {t("路由运行")}
             </h2>
-            <span className="section-meta">最近 {Math.min(runs.length, 20)} 次</span>
+            <span className="section-meta">
+              {t("最近 {count} 次", { count: Math.min(runs.length, 20) })}
+            </span>
           </div>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>执行方式</th>
-                  <th>尝试</th>
-                  <th>结果</th>
-                  <th>状态</th>
+                  <th>{t("时间")}</th>
+                  <th>{t("执行方式")}</th>
+                  <th>{t("尝试")}</th>
+                  <th>{t("结果")}</th>
+                  <th>{t("状态")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,11 +445,18 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
                   return (
                     <tr key={r.id}>
                       <td className="muted nowrap">{time(r.created_at)}</td>
-                      <td>{prop(r, "executor") === "model" ? `本地模型 ${prop(r, "model")}` : "离线规则"}</td>
+                      <td>
+                        {prop(r, "executor") === "model"
+                          ? t("本地模型 {name}", { name: prop(r, "model") })
+                          : t("离线规则")}
+                      </td>
                       <td>{num(r, "attempts") || (r.status === "completed" ? 1 : 0)}</td>
                       <td>
                         {prop(r, "error") ||
-                          `${num(r, "proposals_created")} 条候选${rejected ? `，${rejected} 条未通过校验` : ""}`}
+                          t("{count} 条候选", { count: num(r, "proposals_created") }) +
+                            (rejected
+                              ? t("，{count} 条未通过校验", { count: rejected })
+                              : "")}
                       </td>
                       <td>
                         <StatusBadge status={r.status} />
@@ -365,32 +474,76 @@ export function AgentHub({ ctx }: { ctx: PageContext }) {
 }
 
 function ConnectionForm({
+  platforms,
   protocols,
+  types,
   busy,
   onIssued,
 }: {
+  platforms: PlatformPreset[];
   protocols: { id: string; label: string }[];
+  types: RelationType[];
   busy: boolean;
-  onIssued: (body: { name: string; protocol: string }) => Promise<void>;
+  onIssued: (body: Record<string, unknown>) => Promise<void>;
 }) {
   const [name, setName] = useState("");
-  const [protocol, setProtocol] = useState("mcp");
+  const [platform, setPlatform] = useState("custom");
+  const [protocol, setProtocol] = useState("http");
+  const [type, setType] = useState("ai_assistant");
+  const [scenes, setScenes] = useState<string[]>([]);
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    await onIssued({ name, protocol });
+    await onIssued({
+      name,
+      protocol,
+      platform,
+      relationship_type: type,
+      scenes,
+    });
     setName("");
   };
   return (
-    <form className="inline-form" onSubmit={submit}>
-      <TextField label="连接名称" value={name} onChange={setName} maxLength={80} placeholder="例如：Claude Desktop" />
+    <form className="inline-form connection-form" onSubmit={submit}>
+      <SelectField
+        label="接入平台"
+        value={platform}
+        onChange={(value) => {
+          setPlatform(value);
+          const preset = platforms.find((p) => p.id === value);
+          if (preset) setProtocol(preset.protocol);
+        }}
+        options={platforms.map((p) => ({ value: p.id, label: p.label }))}
+      />
+      <TextField
+        label="连接名称"
+        value={name}
+        onChange={setName}
+        maxLength={80}
+        placeholder="例如：Claude Desktop"
+      />
       <SelectField
         label="接入方式"
         value={protocol}
         onChange={setProtocol}
         options={protocols.map((p) => ({ value: p.id, label: p.label }))}
       />
+      <SelectField
+        label="关系类型"
+        value={type}
+        onChange={(value) => {
+          setType(value);
+          const picked = types.find((x) => x.id === value);
+          if (picked && scenes.length === 0) setScenes([picked.scene]);
+        }}
+        options={types.map((x) => ({ value: x.id, label: x.label }))}
+      />
+      <SceneInput
+        scenes={scenes}
+        onChange={setScenes}
+        legend="关系场景（不选则按关系类型默认）"
+      />
       <button className="button primary" disabled={busy || !name.trim()}>
-        签发令牌
+        {t("签发令牌")}
       </button>
     </form>
   );
@@ -432,7 +585,7 @@ function ModelForm({
       <TextField label="本机地址" value={baseUrl} onChange={setBaseUrl} maxLength={200} />
       <TextField label="模型标识" value={model} onChange={setModel} maxLength={120} placeholder="例如：qwen2.5:7b" />
       <button className="button primary" disabled={busy}>
-        登记模型
+        {t("登记模型")}
       </button>
     </form>
   );
@@ -490,7 +643,7 @@ function RouteForm({
         value={kind}
         onChange={setKind}
         placeholder="任意"
-        options={Object.entries(itemKinds).map(([value, label]) => ({ value, label }))}
+        options={Object.entries(itemKinds).map(([value, itemLabel]) => ({ value, label: itemLabel }))}
       />
       <SelectField
         label="执行方式"
@@ -498,11 +651,11 @@ function RouteForm({
         onChange={setExecutor}
         options={[
           { value: "offline-rules", label: "离线规则" },
-          ...models.map((m) => ({ value: m.id, label: `本地模型 · ${m.title}` })),
+          ...models.map((m) => ({ value: m.id, label: `${t("本地模型")} · ${m.title}` })),
         ]}
       />
       <button className="button primary" disabled={busy || !title.trim()}>
-        添加规则
+        {t("添加规则")}
       </button>
     </form>
   );

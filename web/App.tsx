@@ -37,6 +37,7 @@ import {
   type Workspace,
 } from "./api";
 import type { Page, PageContext } from "./context";
+import { LocaleSelect, t, useT } from "./i18n";
 import { Editor } from "./Editor";
 import { PrpDialog, isPrpDialog } from "./dialogs/PrpDialogs";
 import { RelationDialog, isRelationDialog } from "./dialogs/RelationDialogs";
@@ -51,6 +52,7 @@ import { Physical } from "./pages/Physical";
 import { Relations } from "./pages/Relations";
 import { SelfPage } from "./pages/SelfPage";
 
+// Labels stay in Simplified Chinese here and are translated at render time.
 const navigation = [
   { id: "dashboard", label: "工作台", icon: LayoutDashboard },
   { id: "self", label: "自我本体", icon: Activity },
@@ -75,6 +77,7 @@ const eyebrows: Record<Page, string> = {
 };
 
 export default function App() {
+  useT(); // Subscribe the whole tree to language switches.
   const [auth, setAuth] = useState<{
     initialized: boolean;
     authenticated: boolean;
@@ -101,7 +104,7 @@ export default function App() {
       setVault(null);
       setDialog(null);
     }
-    setError(reason instanceof Error ? reason.message : "操作未完成");
+    setError(reason instanceof Error ? reason.message : t("操作未完成"));
   }, []);
   const refresh = useCallback(async () => {
     const data = await api<Workspace>("/workspace");
@@ -181,13 +184,13 @@ export default function App() {
     return (
       <div className="loading">
         <LoaderCircle className="spin" />
-        <span>{error || "正在连接本机工作区"}</span>
+        <span>{error || t("正在连接本机工作区")}</span>
         {error && (
           <button
             className="button secondary"
             onClick={() => location.reload()}
           >
-            重试
+            {t("重试")}
           </button>
         )}
       </div>
@@ -206,13 +209,13 @@ export default function App() {
     return (
       <div className="loading">
         <LoaderCircle className="spin" />
-        <span>{error || "正在读取工作区"}</span>
+        <span>{error || t("正在读取工作区")}</span>
         {error && (
           <button
             className="button secondary"
             onClick={() => void refresh().catch(fail)}
           >
-            重试
+            {t("重试")}
           </button>
         )}
       </div>
@@ -273,7 +276,7 @@ export default function App() {
       {sidebar && (
         <button
           className="sidebar-shade"
-          aria-label="关闭导航"
+          aria-label={t("关闭导航")}
           onClick={() => setSidebar(false)}
         />
       )}
@@ -288,15 +291,15 @@ export default function App() {
           <span className="local-edition">PERSONAL</span>
         </div>
         <div className="workspace-label">
-          <span className="avatar">我</span>
+          <span className="avatar">{t("我")}</span>
           <div>
-            <strong>我的资源与关系</strong>
-            <small>个人本体工作区</small>
+            <strong>{t("我的资源与关系")}</strong>
+            <small>{t("个人本体工作区")}</small>
           </div>
           <ShieldCheck size={17} />
         </div>
-        <div className="nav-caption">工作空间</div>
-        <nav aria-label="主导航">
+        <div className="nav-caption">{t("工作空间")}</div>
+        <nav aria-label={t("主导航")}>
           {navigation.map((item) => (
             <button
               key={item.id}
@@ -304,7 +307,7 @@ export default function App() {
               onClick={() => go(item.id)}
             >
               <item.icon size={18} />
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
               {item.id === "decisions" && proposals.length > 0 && (
                 <span className="nav-count">{proposals.length}</span>
               )}
@@ -317,15 +320,15 @@ export default function App() {
         <div className="sidebar-bottom">
           <div className="local-state">
             <i />
-            <span>本机运行</span>
-            <span className="mono">v0.4</span>
+            <span>{t("本机运行")}</span>
+            <span className="mono">v0.5</span>
           </div>
           <button
             className="sign-out"
             onClick={() => void logout().catch(fail)}
           >
             <LogOut size={16} />
-            退出账户
+            {t("退出账户")}
           </button>
         </div>
       </aside>
@@ -334,23 +337,24 @@ export default function App() {
           <div className="breadcrumb">
             <button
               className="icon-button mobile-menu"
-              aria-label="打开导航"
+              aria-label={t("打开导航")}
               onClick={() => setSidebar(true)}
             >
               <Menu size={20} />
             </button>
-            <span>个人资源与关系</span>
+            <span>{t("个人资源与关系")}</span>
             <ChevronRight size={14} />
-            <strong>{current.label}</strong>
+            <strong>{t(current.label)}</strong>
           </div>
           <div className="topbar-right">
+            <LocaleSelect />
             <select
               className="scene-select"
-              aria-label="人生场景"
+              aria-label={t("人生场景")}
               value={scene}
               onChange={(event) => setScene(event.target.value)}
             >
-              <option value="">全部场景</option>
+              <option value="">{t("全部场景")}</option>
               {SCENES.map((id) => (
                 <option key={id} value={id}>
                   {sceneLabel(id)}
@@ -359,24 +363,24 @@ export default function App() {
             </select>
             <span className="local-badge">
               <ShieldCheck size={14} />
-              本地数据
+              {t("本地数据")}
             </span>
-            <span className="avatar small">我</span>
+            <span className="avatar small">{t("我")}</span>
           </div>
         </header>
         <main>
           <div className="page-heading">
             <div>
               <div className="eyebrow">{eyebrows[page]}</div>
-              <h1>{current.label}</h1>
+              <h1>{t(current.label)}</h1>
             </div>
             <div className="page-actions">
               {page !== "mental" && page !== "audit" && (
                 <label className="search">
                   <Search size={16} />
                   <input
-                    aria-label="搜索当前视图"
-                    placeholder="搜索当前视图"
+                    aria-label={t("搜索当前视图")}
+                    placeholder={t("搜索当前视图")}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -388,7 +392,7 @@ export default function App() {
                   onClick={() => setDialog({ type: "task" })}
                 >
                   <Plus size={17} />
-                  新建任务
+                  {t("新建任务")}
                 </button>
               )}
               {page === "relations" && (
@@ -397,15 +401,15 @@ export default function App() {
                   onClick={() => setDialog({ type: "relationship" })}
                 >
                   <Plus size={17} />
-                  新建关系
+                  {t("新建关系")}
                 </button>
               )}
               {page === "mental" && vault && (
                 <>
                   <button
                     className="icon-button outlined"
-                    aria-label="锁定思维库"
-                    title="锁定思维库"
+                    aria-label={t("锁定思维库")}
+                    title={t("锁定思维库")}
                     onClick={lockVault}
                   >
                     <LockKeyhole size={18} />
@@ -415,7 +419,7 @@ export default function App() {
                     onClick={() => setDialog({ type: "core" })}
                   >
                     <Plus size={17} />
-                    新建条目
+                    {t("新建条目")}
                   </button>
                 </>
               )}
@@ -424,11 +428,14 @@ export default function App() {
                   className="button primary"
                   disabled={busy}
                   onClick={() =>
-                    void run(() => api("/analyze", {}), "分析完成，建议已更新")
+                    void run(
+                      () => api("/analyze", {}),
+                      t("分析完成，建议已更新"),
+                    )
                   }
                 >
                   <Sparkles size={17} />
-                  分析资源
+                  {t("分析资源")}
                 </button>
               )}
               {page === "audit" && (
@@ -437,7 +444,7 @@ export default function App() {
                   onClick={() => void exportData().catch(fail)}
                 >
                   <Download size={16} />
-                  导出业务数据
+                  {t("导出业务数据")}
                 </button>
               )}
             </div>
@@ -445,10 +452,12 @@ export default function App() {
           {scene && page !== "mental" && page !== "audit" && (
             <div className="scene-banner">
               <span>
-                当前场景：<strong>{sceneLabel(scene)}</strong>，列表只显示标注了这一场景的记录
+                {t("当前场景：{scene}，列表只显示标注了这一场景的记录", {
+                  scene: sceneLabel(scene),
+                })}
               </span>
               <button className="text-button" onClick={() => setScene("")}>
-                显示全部场景
+                {t("显示全部场景")}
               </button>
             </div>
           )}
@@ -458,7 +467,7 @@ export default function App() {
               <span>{error}</span>
               <button
                 className="icon-button"
-                aria-label="关闭错误"
+                aria-label={t("关闭错误")}
                 onClick={() => setError("")}
               >
                 <X size={16} />
@@ -476,11 +485,11 @@ export default function App() {
           {page === "audit" && <AuditLog workspace={workspace} />}
         </main>
         <footer className="page-footer">
-          <span>由自己的判断出发</span>
+          <span>{t("由自己的判断出发")}</span>
           <span>
             <span className="mini-dot" />
-            离线规则引擎 <span className="footer-divider">/</span>{" "}
-            数据保存在本机
+            {t("离线规则引擎")} <span className="footer-divider">/</span>{" "}
+            {t("数据保存在本机")}
           </span>
         </footer>
       </div>

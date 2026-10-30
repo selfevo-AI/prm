@@ -11,8 +11,9 @@ import {
   ShieldCheck,
   UnlockKeyhole,
 } from "lucide-react";
-import { labels, time, type Dialog, type Vault } from "../api";
+import { label, time, type Dialog, type Vault } from "../api";
 import { Empty, Values } from "../components";
+import { t } from "../i18n";
 import { Permissions } from "../Permissions";
 
 export function Mental({
@@ -30,26 +31,27 @@ export function Mental({
           <LockKeyhole size={37} strokeWidth={1.4} />
         </div>
         <span className="eyebrow">PRIVATE MENTAL SPACE</span>
-        <h2>你的判断，由你守护</h2>
-        <p>思维库已锁定</p>
+        <h2>{t("你的判断，由你守护")}</h2>
+        <p>{t("思维库已锁定")}</p>
         <button
           className="button primary"
           onClick={() => onDialog({ type: "unlock" })}
         >
           <UnlockKeyhole size={17} />
-          本人解锁
+          {t("本人解锁")}
         </button>
         <div className="vault-boundaries">
           <span>
             <ShieldCheck size={16} />
-            独立加密
+            {t("独立加密")}
           </span>
           <span>
             <Pencil size={16} />
-            本人确认
+            {t("本人确认")}
           </span>
           <span>
-            <LockKeyhole size={16} />5 分钟自动锁定
+            <LockKeyhole size={16} />
+            {t("5 分钟自动锁定")}
           </span>
         </div>
       </section>
@@ -59,11 +61,11 @@ export function Mental({
     <>
       <div className="vault-status">
         <ShieldCheck size={17} />
-        <span>本人修改 · 按授权只读</span>
-        <span className="muted">版本 {vault.version}</span>
+        <span>{t("本人修改 · 按授权只读")}</span>
+        <span className="muted">{t("版本 {version}", { version: vault.version })}</span>
         <span className="vault-status-right">
           <Clock3 size={14} />
-          切换页面或离开窗口时锁定
+          {t("切换页面或离开窗口时锁定")}
         </span>
       </div>
       <Permissions vault={vault} />
@@ -74,7 +76,7 @@ export function Mental({
             key={value}
             onClick={() => setKind(value)}
           >
-            {labels[value]}
+            {label(value)}
             <span>
               {vault.items.filter((item) => item.kind === value).length}
             </span>
@@ -92,7 +94,10 @@ export function Mental({
                 <div>
                   <h2>{item.title}</h2>
                   <span className="muted small-text">
-                    版本 {item.version} · 最近确认 {time(item.confirmed_at)}
+                    {t("版本 {version} · 最近确认 {at}", {
+                      version: item.version,
+                      at: time(item.confirmed_at),
+                    })}
                   </span>
                 </div>
                 <Values values={item.values} />
@@ -104,35 +109,35 @@ export function Mental({
                   onClick={() => onDialog({ type: "review", core: item })}
                 >
                   <Check size={16} />
-                  今日确认
+                  {t("今日确认")}
                 </button>
                 <button
                   className="text-button"
                   onClick={() => onDialog({ type: "core", core: item })}
                 >
                   <Pencil size={15} />
-                  编辑
+                  {t("编辑")}
                 </button>
                 <button
                   className="text-button"
                   onClick={() => onDialog({ type: "history", core: item })}
                 >
                   <History size={15} />
-                  版本
+                  {t("版本")}
                 </button>
                 <button
                   className="text-button publish-button"
                   onClick={() => onDialog({ type: "publish", core: item })}
                 >
                   <ArrowUpRight size={16} />
-                  发布执行方向
+                  {t("发布执行方向")}
                 </button>
               </footer>
             </article>
           ))}
         </div>
       ) : (
-        <Empty title={`尚未记录${labels[kind]}`}>
+        <Empty title={t("尚未记录{kind}", { kind: label(kind) })}>
           <button
             className="text-button"
             onClick={() =>
@@ -152,7 +157,7 @@ export function Mental({
             }
           >
             <Plus size={15} />
-            由我开始记录
+            {t("由我开始记录")}
           </button>
         </Empty>
       )}

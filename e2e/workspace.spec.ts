@@ -449,3 +449,42 @@ test("self ontology, relations, agent gateway and PRP purchasing", async ({
   }
   expect(errors).toEqual([]);
 });
+
+test("the interface switches between Chinese and English", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("/");
+  await page.getByLabel("账户口令").fill(password);
+  await page.getByRole("button", { name: "进入工作区" }).click();
+  await expect(
+    page.getByRole("heading", { name: "工作台", exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("界面语言").selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Workbench", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Relations", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Relations", exact: true, level: 1 }),
+  ).toBeVisible();
+  await page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Digital space", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Agent connections", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "External agent connections" }),
+  ).toBeVisible();
+  // The agent connected in the previous test is listed with its platform.
+  const connections = page.locator(".hub-list").first();
+  await expect(connections.getByText("测试 Agent", { exact: true })).toBeVisible();
+  await expect(connections.getByText("Custom / Generic")).toBeVisible();
+  await page.getByLabel("Interface language").selectOption("zh");
+  await expect(
+    page.getByRole("heading", { name: "数字空间", exact: true }),
+  ).toBeVisible();
+  expect(errors).toEqual([]);
+});

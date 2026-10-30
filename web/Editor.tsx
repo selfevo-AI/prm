@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { ArrowUpRight, Boxes, ListTodo, LockKeyhole, Network, ShieldCheck } from "lucide-react";
 import {
   api,
   cents,
-  labels,
+  label,
   money,
   num,
   prop,
@@ -23,6 +23,7 @@ import {
   ValueInput,
   Values,
 } from "./components";
+import { t } from "./i18n";
 
 const detailFields: Record<string, [string, string][]> = {
   resource: [
@@ -36,6 +37,11 @@ const detailFields: Record<string, [string, string][]> = {
     ["serial_no", "序列号"],
   ],
   person: [["notes", "备注"]],
+  ai_agent: [
+    ["platform", "接入平台"],
+    ["protocol", "接入方式"],
+    ["notes", "备注"],
+  ],
   supplier: [
     ["contact", "联系方式"],
     ["tax_id", "税号"],
@@ -46,6 +52,7 @@ const detailFields: Record<string, [string, string][]> = {
     ["notes", "备注"],
   ],
   relationship: [
+    ["platform", "接入平台"],
     ["closeness", "亲密度（IOS）"],
     ["satisfaction", "满意度（RAS）"],
     ["contact_interval_days", "联系节奏（天）"],
@@ -236,14 +243,14 @@ export function Editor({
         await onSaved(
           updated,
           type === "publish"
-            ? "执行方向已发布"
+            ? t("执行方向已发布")
             : type === "approve"
               ? action === "create_task"
-                ? "已采纳，任务已创建"
+                ? t("已采纳，任务已创建")
                 : action === "create_entity"
-                  ? "已采纳，已写入本体"
-                  : "已采纳，关系已建立"
-              : "已保存",
+                  ? t("已采纳，已写入本体")
+                  : t("已采纳，关系已建立")
+              : t("已保存"),
         );
     } catch (reason) {
       if (alive.current) setError((reason as Error).message);
@@ -252,7 +259,7 @@ export function Editor({
     }
   };
   const field = (
-    label: string,
+    name: string,
     value: string,
     setter: (v: string) => void,
     inputType = "text",
@@ -260,7 +267,7 @@ export function Editor({
     required = true,
   ) => (
     <label className="field">
-      {label}
+      {t(name)}
       <input
         required={required}
         type={inputType}
@@ -273,9 +280,9 @@ export function Editor({
       />
     </label>
   );
-  const textArea = (label: string, maxLength = 4000) => (
+  const textArea = (name: string, maxLength = 4000) => (
     <label className="field">
-      {label}
+      {t(name)}
       <textarea
         required
         rows={5}
@@ -286,19 +293,19 @@ export function Editor({
     </label>
   );
   const select = (
-    label: string,
+    name: string,
     value: string,
     setter: (v: string) => void,
     options: { value: string; label: string }[],
     empty?: string,
   ) => (
     <label className="field">
-      {label}
-      <select aria-label={label} value={value} onChange={(event) => setter(event.target.value)}>
-        {empty !== undefined && <option value="">{empty}</option>}
+      {t(name)}
+      <select aria-label={t(name)} value={value} onChange={(event) => setter(event.target.value)}>
+        {empty !== undefined && <option value="">{t(empty)}</option>}
         {options.map((o) => (
           <option key={o.value} value={o.value}>
-            {o.label}
+            {t(o.label)}
           </option>
         ))}
       </select>
@@ -328,38 +335,40 @@ export function Editor({
   const relationSpec = (entity?.properties.relation || {}) as Record<string, string>;
   return (
     <Modal
-      title={titles[type]}
+      title={t(titles[type])}
       onClose={onClose}
       onSubmit={readonly ? undefined : submit}
       busy={busy}
       error={error}
-      wide={type === "history" || (type === "resource")}
+      wide={type === "history" || type === "resource"}
       submit={
         canRevoke
-          ? "撤回授权"
+          ? t("撤回授权")
           : type === "unlock"
-            ? "解锁"
+            ? t("解锁")
             : type === "approve"
               ? action === "create_task"
-                ? "确认创建任务"
+                ? t("确认创建任务")
                 : action === "create_entity"
-                  ? "确认纳入"
-                  : "确认建立关系"
+                  ? t("确认纳入")
+                  : t("确认建立关系")
               : type === "publish"
-                ? "确认发布"
+                ? t("确认发布")
                 : ["core", "review"].includes(type)
-                  ? "本人确认并保存"
-                  : "保存"
+                  ? t("本人确认并保存")
+                  : t("保存")
       }
     >
       {type === "unlock" && (
         <>
           <div className="privacy-note">
             <LockKeyhole size={19} />
-            <span>仅本人可修改；有效只读授权在解锁期间可读取指定内容。解锁有效期 5 分钟。</span>
+            <span>
+              {t("仅本人可修改；有效只读授权在解锁期间可读取指定内容。解锁有效期 5 分钟。")}
+            </span>
           </div>
           <label className="field">
-            账户口令
+            {t("账户口令")}
             <input
               required
               autoFocus
@@ -387,7 +396,7 @@ export function Editor({
           "条目类型",
           kind,
           setKind,
-          ["principle", "goal", "reflection"].map((k) => ({ value: k, label: labels[k] })),
+          ["principle", "goal", "reflection"].map((k) => ({ value: k, label: label(k) })),
         )}
       {["task", "note", "core"].includes(type) &&
         textArea(
@@ -399,7 +408,7 @@ export function Editor({
           <div className="privacy-note">
             <ArrowUpRight size={18} />
             <span>
-              发布后的标题、内容和评价维度将进入业务数据，作为核心原则提供给本地模型，并允许助理读取。
+              {t("发布后的标题、内容和评价维度将进入业务数据，作为核心原则提供给本地模型，并允许助理读取。")}
             </span>
           </div>
           {textArea("允许助理读取的执行要求")}
@@ -458,7 +467,9 @@ export function Editor({
             {itemType === "asset" && field("保修截止", warranty, setWarranty, "date", 10, false)}
           </div>
           {itemType === "asset" && field("序列号", serial, setSerial, "text", 80, false)}
-          <p className="muted small-text">期初数量为 0，登记后可办理入库或采购收货。</p>
+          <p className="muted small-text">
+            {t("期初数量为 0，登记后可办理入库或采购收货。")}
+          </p>
         </>
       )}
       {type === "movement" && (
@@ -468,12 +479,15 @@ export function Editor({
             <div>
               <strong>{entity!.title}</strong>
               <p>
-                当前库存 {num(entity!, "quantity")} {prop(entity!, "unit")}
+                {t("当前库存 {quantity} {unit}", {
+                  quantity: num(entity!, "quantity"),
+                  unit: t(prop(entity!, "unit")),
+                })}
               </p>
             </div>
           </div>
           {field(
-            `数量（${prop(entity!, "unit")}）`,
+            t("数量（{unit}）", { unit: t(prop(entity!, "unit")) }),
             quantity,
             setQuantity,
             "number",
@@ -489,19 +503,19 @@ export function Editor({
               className={direction === "expense" ? "active" : ""}
               onClick={() => setDirection("expense")}
             >
-              支出
+              {t("支出")}
             </button>
             <button
               type="button"
               className={direction === "income" ? "active" : ""}
               onClick={() => setDirection("income")}
             >
-              收入
+              {t("收入")}
             </button>
           </div>
           <div className="form-grid">
             <label className="field">
-              金额（元）
+              {t("金额（元）")}
               <input
                 required
                 inputMode="decimal"
@@ -542,7 +556,9 @@ export function Editor({
           <div className="review-text">
             {action === "create_entity" && (
               <p>
-                <span className="tag">纳入{labels[spec.kind || ""] || "实体"}</span>{" "}
+                <span className="tag">
+                  {t("纳入{kind}", { kind: spec.kind ? label(spec.kind) : t("实体") })}
+                </span>{" "}
                 {Object.entries(spec.properties || {})
                   .filter(([, v]) => String(v ?? "") !== "")
                   .map(([k, v]) => `${k}：${String(v)}`)
@@ -552,13 +568,13 @@ export function Editor({
             {action === "create_relation" && (
               <p className="relation-summary">
                 <Network size={15} /> {relationSpec.subject_title}{" "}
-                <strong>{labels[relationSpec.predicate] || relationSpec.predicate}</strong>{" "}
+                <strong>{label(relationSpec.predicate)}</strong>{" "}
                 {relationSpec.object_title}
               </p>
             )}
             <p className="preserve-text">{prop(entity!, "rationale")}</p>
             <p className="muted small-text">
-              依据：
+              {t("依据：")}
               {workspace.entities.find((e) => e.id === prop(entity!, "source_id"))?.title}
             </p>
           </div>
@@ -567,10 +583,10 @@ export function Editor({
             <ListTodo size={18} />
             <span>
               {action === "create_task"
-                ? "确认后将创建一项待开始任务。"
+                ? t("确认后将创建一项待开始任务。")
                 : action === "create_entity"
-                  ? "确认后将按本体约束重新校验并写入；之后可在对应页面继续维护。"
-                  : "关系两端须已存在；引用同一导入中的其他候选时，请先采纳那一条。"}
+                  ? t("确认后将按本体约束重新校验并写入；之后可在对应页面继续维护。")
+                  : t("关系两端须已存在；引用同一导入中的其他候选时，请先采纳那一条。")}
             </span>
           </div>
         </>
@@ -617,7 +633,9 @@ export function Editor({
               <h3>
                 v{e.version} · {e.title}
               </h3>
-              <p className="muted small-text">确认于 {time(e.confirmed_at)}</p>
+              <p className="muted small-text">
+                {t("确认于 {at}", { at: time(e.confirmed_at) })}
+              </p>
               <p className="preserve-text">{e.body}</p>
             </div>
           ))}
@@ -632,10 +650,14 @@ function Detail({ entity, canRevoke }: { entity: Entity; canRevoke: boolean }) {
   const fields = (detailFields[entity.kind] || []).filter(
     ([key]) => String(entity.properties[key] ?? "") !== "",
   );
+  const value = (key: string): ReactNode => {
+    const raw = String(entity.properties[key]);
+    return key === "platform" || key === "protocol" ? label(raw) : raw;
+  };
   return (
     <>
       <div className="detail-meta">
-        <span>{labels[entity.kind]}</span>
+        <span>{label(entity.kind)}</span>
         <StatusBadge status={entity.status} />
         <span>v{entity.version}</span>
       </div>
@@ -643,7 +665,7 @@ function Detail({ entity, canRevoke }: { entity: Entity; canRevoke: boolean }) {
         <div className="privacy-note">
           <ShieldCheck size={17} />
           <span>
-            撤回后，后续助理上下文与本地模型的核心原则将不再包含这一方向。已生成的任务和已读取的内容无法自动收回。
+            {t("撤回后，后续助理上下文与本地模型的核心原则将不再包含这一方向。已生成的任务和已读取的内容无法自动收回。")}
           </span>
         </div>
       )}
@@ -654,15 +676,15 @@ function Detail({ entity, canRevoke }: { entity: Entity; canRevoke: boolean }) {
       </p>
       {entity.kind === "resource" && (
         <dl>
-          <dt>库存</dt>
+          <dt>{t("库存")}</dt>
           <dd>
-            {num(entity, "quantity")} {prop(entity, "unit")}
+            {num(entity, "quantity")} {t(prop(entity, "unit"))}
           </dd>
-          <dt>最低库存</dt>
+          <dt>{t("最低库存")}</dt>
           <dd>{num(entity, "minimum")}</dd>
           {num(entity, "unit_cost_cents") > 0 && (
             <>
-              <dt>单位成本</dt>
+              <dt>{t("单位成本")}</dt>
               <dd>{money(num(entity, "unit_cost_cents"))}</dd>
             </>
           )}
@@ -670,39 +692,41 @@ function Detail({ entity, canRevoke }: { entity: Entity; canRevoke: boolean }) {
       )}
       {fields.length > 0 && (
         <dl>
-          {fields.map(([key, label]) => (
+          {fields.map(([key, name]) => (
             <div key={key} className="detail-row">
-              <dt>{label}</dt>
-              <dd>{String(entity.properties[key])}</dd>
+              <dt>{t(name)}</dt>
+              <dd>{value(key)}</dd>
             </div>
           ))}
         </dl>
       )}
-      <p className="muted small-text">建立于 {time(entity.created_at)}</p>
+      <p className="muted small-text">
+        {t("建立于 {at}", { at: time(entity.created_at) })}
+      </p>
       <code className="entity-id">{entity.id}</code>
     </>
   );
 }
 
 function entitySelect(
-  label: string,
+  name: string,
   value: string,
   setter: (value: string) => void,
   entities: Entity[],
 ) {
   return (
     <label className="field">
-      {label}
+      {t(name)}
       <select
         required
-        aria-label={label}
+        aria-label={t(name)}
         value={value}
         onChange={(event) => setter(event.target.value)}
       >
-        <option value="">选择实体</option>
+        <option value="">{t("选择实体")}</option>
         {entities.map((e) => (
           <option key={e.id} value={e.id}>
-            {labels[e.kind] || e.kind} · {e.title}
+            {label(e.kind)} · {e.title}
           </option>
         ))}
       </select>

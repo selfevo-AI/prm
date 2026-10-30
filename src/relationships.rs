@@ -26,6 +26,9 @@ pub const RELATIONSHIP_TYPES: &[(&str, &str, &str)] = &[
     ("client", "客户", "work"),
     ("community", "社群", "social"),
     ("other", "其他", "social"),
+    ("ai_assistant", "AI 助理", "work"),
+    ("ai_companion", "AI 伙伴", "life"),
+    ("ai_mentor", "AI 导师", "learning"),
 ];
 pub const INTERACTION_CHANNELS: &[(&str, &str)] = &[
     ("meet", "见面"),
@@ -55,6 +58,27 @@ fn relationship_type(id: &str) -> Result<&'static (&'static str, &'static str, &
         .iter()
         .find(|(t, ..)| *t == id)
         .ok_or(Error::Bad("关系类型不合法".into()))
+}
+/// AI-agent relation types, opened through the agent connection flow.
+pub fn ai_types() -> impl Iterator<Item = &'static (&'static str, &'static str, &'static str)> {
+    RELATIONSHIP_TYPES
+        .iter()
+        .filter(|(id, ..)| id.starts_with("ai_"))
+}
+pub fn ai_type(id: &str) -> Option<&'static (&'static str, &'static str, &'static str)> {
+    ai_types().find(|(t, ..)| *t == id)
+}
+/// The counterpart of a relation: an agent name, or a person name.
+fn party_name(relationship: &Entity) -> String {
+    for key in ["agent_name", "person_name"] {
+        if let Some(name) = relationship.properties[key]
+            .as_str()
+            .filter(|s| !s.is_empty())
+        {
+            return name.to_string();
+        }
+    }
+    String::new()
 }
 fn check_measures(
     closeness: i64,
@@ -104,6 +128,10 @@ pub async fn create(
 ) -> Result<Json<Value>> {
     actor.owner()?;
     let (type_id, type_label, default_scene) = *relationship_type(&body.relationship_type)?;
+    require(
+        !type_id.starts_with("ai_"),
+        "AI Agent 关系请通过“Agent 接入”建立",
+    )?;
     check_measures(
         body.closeness,
         body.satisfaction,
@@ -141,7 +169,7 @@ pub async fn create(
             &body.values,
             &scenes,
             json!({
-                "type": type_id, "person_id": person.id, "person_name": person.title,
+                "type": type_id, "party_kind": "person", "person_id": person.id, "person_name": person.title,
                 "closeness": body.closeness, "satisfaction": body.satisfaction,
                 "contact_interval_days": body.contact_interval_days, "last_contact_at": "",
                 "notes": body.notes, "agent_visible": body.agent_visible,
@@ -245,20 +273,29 @@ pub async fn interaction(
     let inner = state.lock()?;
     let entry = inner.store.transaction(|store| {
         let mut relationship = current(store, &id, body.expected_version)?;
-        let person_name = relationship.properties["person_name"]
+        let name = party_name(&relationship);
+        let agent_id = relationship.properties["agent_id"]
             .as_str()
             .unwrap_or("")
             .to_string();
+        let mut properties = json!({
+            "relationship_id": relationship.id, "date": body.date, "channel": body.channel,
+            "valence": body.valence, "notes": body.notes,
+        });
+        if agent_id.is_empty() {
+            properties["person_id"] = relationship.properties["person_id"].clone();
+            properties["person_name"] = json!(name);
+        } else {
+            properties["party_kind"] = json!("ai_agent");
+            properties["agent_id"] = json!(agent_id);
+            properties["agent_name"] = json!(name);
+        }
         let entry = store.insert_scoped(
             "interaction",
-            &format!("{} · {}", channel.1, person_name),
+            &format!("{} · {}", channel.1, name),
             &relationship.values,
             &relationship.scenes,
-            json!({
-                "relationship_id": relationship.id, "person_id": relationship.properties["person_id"],
-                "person_name": person_name, "date": body.date, "channel": body.channel,
-                "valence": body.valence, "notes": body.notes,
-            }),
+            properties,
             "posted",
         )?;
         store.relate(&entry.id, "occurs_in", &relationship.id)?;
@@ -339,5 +376,16 @@ mod tests {
             contact_due(&relationship("", 30, "active"), today),
             Some(59)
         );
+    }
+
+    #[test]
+    fn ai_types_are_listed_and_carry_their_default_scene() {
+        assert_eq!(ai_type("ai_assistant").unwrap().1, "AI 助理");
+        assert_eq!(ai_type("ai_companion").unwrap().2, "life");
+        assert!(ai_type("friend").is_none());
+        assert_eq!(ai_types().count(), 3);
+        let mut agent_relation = relationship("", 0, "active");
+        agent_relation.properties["agent_name"] = json!("Grok 机器人");
+        assert_eq!(party_name(&agent_relation), "Grok 机器人");
     }
 }

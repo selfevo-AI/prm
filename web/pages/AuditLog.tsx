@@ -1,4 +1,5 @@
 import type { Workspace } from "../api";
+import { locale, t } from "../i18n";
 
 const descriptions: Record<string, string> = {
   "account.created": "建立账户",
@@ -57,25 +58,26 @@ export function AuditLog({ workspace }: { workspace: Workspace }) {
     <>
       <div className="section-heading">
         <h2>
-          最近活动<span className="count">{workspace.audit.length}</span>
+          {t("最近活动")}
+          <span className="count">{workspace.audit.length}</span>
         </h2>
-        <span className="section-meta">最近 200 条</span>
+        <span className="section-meta">{t("最近 200 条")}</span>
       </div>
       <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>时间</th>
-              <th>执行者</th>
-              <th>操作</th>
-              <th>对象</th>
+              <th>{t("时间")}</th>
+              <th>{t("执行者")}</th>
+              <th>{t("操作")}</th>
+              <th>{t("对象")}</th>
             </tr>
           </thead>
           <tbody>
             {workspace.audit.map((a) => (
               <tr key={a.sequence}>
                 <td className="muted nowrap">
-                  {new Date(a.at).toLocaleString("zh-CN", {
+                  {new Date(a.at).toLocaleString(locale() === "zh" ? "zh-CN" : "en-US", {
                     month: "2-digit",
                     day: "2-digit",
                     hour: "2-digit",
@@ -85,18 +87,18 @@ export function AuditLog({ workspace }: { workspace: Workspace }) {
                 <td>
                   <span className={`actor ${a.actor}`}>
                     <span className="mini-dot" />
-                    {actors[a.actor] || "未认证"}
+                    {t(actors[a.actor] || "未认证")}
                   </span>
                 </td>
-                <td>{descriptions[a.action] || a.action}</td>
+                <td>{t(descriptions[a.action] || a.action)}</td>
                 <td>
                   {workspace.entities.find((e) => e.id === a.target)?.title ||
                     (a.target === "vault"
-                      ? "私密思维库"
+                      ? t("私密思维库")
                       : a.target === "account"
-                        ? "本地账户"
+                        ? t("本地账户")
                         : a.target === "workspace"
-                          ? "工作区"
+                          ? t("工作区")
                           : a.target.slice(0, 8))}
                 </td>
               </tr>

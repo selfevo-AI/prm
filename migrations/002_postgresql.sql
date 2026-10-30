@@ -22,9 +22,11 @@ CREATE TABLE IF NOT EXISTS read_grants (id TEXT PRIMARY KEY, public_key TEXT NOT
 CREATE TABLE IF NOT EXISTS request_nonces (id TEXT PRIMARY KEY, expires_at BIGINT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_nonce_expiry ON request_nonces(expires_at);
 -- Owner-issued credentials for external agents. Only the SHA-256 of each token is stored.
+-- entity_id links a credential to its ai_agent entity ('' for legacy rows).
 CREATE TABLE IF NOT EXISTS agent_credentials (
  id TEXT PRIMARY KEY, name TEXT NOT NULL, protocol TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
  created_at TEXT NOT NULL, revoked_at TEXT, last_used_at TEXT
 );
+ALTER TABLE agent_credentials ADD COLUMN IF NOT EXISTS entity_id TEXT NOT NULL DEFAULT '';
 -- Never used: agent runs are agent_run entities.
 DROP TABLE IF EXISTS agent_runs;

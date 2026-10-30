@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, prop, today, type Dialog, type SelfCatalog, type Workspace } from "../api";
 import { Modal, SceneInput, SelectField, TextField } from "../components";
+import { t } from "../i18n";
 
 const types = ["relationship", "relationship_update", "interaction"];
 export const isRelationDialog = (type: string) => types.includes(type);
-const closeness = [
+const closeness: [string, string][] = [
   ["1", "1 · 完全分离"],
   ["2", "2"],
   ["3", "3"],
@@ -12,14 +13,17 @@ const closeness = [
   ["5", "5"],
   ["6", "6"],
   ["7", "7 · 高度重叠"],
-].map(([value, label]) => ({ value, label }));
-const valence = [
+];
+const valence: [string, string][] = [
   ["2", "很愉快"],
   ["1", "愉快"],
   ["0", "平常"],
   ["-1", "偏消极"],
   ["-2", "很消极"],
-].map(([value, label]) => ({ value, label }));
+];
+const partyName = (entity: { properties: Record<string, unknown> }) =>
+  String(entity.properties.agent_name ?? "") ||
+  String(entity.properties.person_name ?? "");
 
 export function RelationDialog({
   dialog,
@@ -58,7 +62,8 @@ export function RelationDialog({
   const parsedSatisfaction = () => {
     if (!satisfaction.trim()) return null;
     const value = Number(satisfaction);
-    if (!Number.isFinite(value) || value < 1 || value > 5) throw new Error("满意度应为 1–5");
+    if (!Number.isFinite(value) || value < 1 || value > 5)
+      throw new Error(t("满意度应为 1–5"));
     return value;
   };
   const submit = async (event: FormEvent) => {
@@ -66,7 +71,7 @@ export function RelationDialog({
     setError("");
     setBusy(true);
     try {
-      let message = "已保存";
+      let message = t("已保存");
       if (type === "relationship") {
         await api("/relationships", {
           ...(person ? { person_id: person } : { person_name: name }),
@@ -78,7 +83,7 @@ export function RelationDialog({
           scenes,
           agent_visible: agentVisible,
         });
-        message = "关系已建立";
+        message = t("关系已建立");
       } else if (type === "relationship_update") {
         await api(`/relationships/${entity!.id}`, {
           closeness: Number(close),
@@ -89,7 +94,7 @@ export function RelationDialog({
           scenes,
           expected_version: entity!.version,
         });
-        message = "关系已更新";
+        message = t("关系已更新");
       } else {
         await api(`/relationships/${entity!.id}/interactions`, {
           date,
@@ -98,7 +103,7 @@ export function RelationDialog({
           notes,
           expected_version: entity!.version,
         });
-        message = "互动已记录";
+        message = t("互动已记录");
       }
       await onSaved(message);
     } catch (reason) {
@@ -110,7 +115,12 @@ export function RelationDialog({
   const measures = (
     <>
       <div className="form-grid">
-        <SelectField label="亲密度（IOS 1–7）" value={close} onChange={setClose} options={closeness} />
+        <SelectField
+          label="亲密度（IOS 1–7）"
+          value={close}
+          onChange={setClose}
+          options={closeness.map(([value, optionLabel]) => ({ value, label: t(optionLabel) }))}
+        />
         <TextField
           label="满意度（RAS 1–5，可选）"
           type="number"
@@ -137,10 +147,10 @@ export function RelationDialog({
     <Modal
       title={
         type === "relationship"
-          ? "新建关系"
+          ? t("新建关系")
           : type === "relationship_update"
-            ? `调整关系 · ${prop(entity!, "person_name")}`
-            : `记录互动 · ${prop(entity!, "person_name")}`
+            ? t("调整关系 · {name}", { name: partyName(entity!) })
+            : t("记录互动 · {name}", { name: partyName(entity!) })
       }
       onClose={onClose}
       onSubmit={submit}
@@ -163,17 +173,16 @@ export function RelationDialog({
             label="关系类型"
             value={kind}
             onChange={setKind}
-            options={(catalog?.relationship_types || [{ id: "friend", label: "朋友", scene: "social" }]).map((t) => ({
-              value: t.id,
-              label: t.label,
-            }))}
+            options={(catalog?.relationship_types || [{ id: "friend", label: "朋友", scene: "social" }])
+              .filter((entry) => !entry.id.startsWith("ai_"))
+              .map((entry) => ({ value: entry.id, label: entry.label }))}
           />
           {measures}
           <TextField label="备注" value={notes} onChange={setNotes} maxLength={2000} required={false} />
           <SceneInput scenes={scenes} onChange={setScenes} legend="人生场景（不选则按关系类型默认）" />
           <label className="check-row">
             <input type="checkbox" checked={agentVisible} onChange={(e) => setAgentVisible(e.target.checked)} />
-            允许本地模型读取这段关系
+            {t("允许本地模型读取这段关系")}
           </label>
         </>
       )}
@@ -202,15 +211,22 @@ export function RelationDialog({
               label="方式"
               value={channel}
               onChange={setChannel}
-              options={(catalog?.interaction_channels || [{ id: "meet", label: "见面" }]).map((c) => ({
-                value: c.id,
-                label: c.label,
+              options={(catalog?.interaction_channels || [{ id: "meet", label: "见面" }]).map((entry) => ({
+                value: entry.id,
+                label: entry.label,
               }))}
             />
           </div>
-          <SelectField label="情绪体验" value={feeling} onChange={setFeeling} options={valence} />
+          <SelectField
+            label="情绪体验"
+            value={feeling}
+            onChange={setFeeling}
+            options={valence.map(([value, optionLabel]) => ({ value, label: t(optionLabel) }))}
+          />
           <TextField label="备注" value={notes} onChange={setNotes} maxLength={2000} required={false} />
-          <p className="muted small-text">互动按事件追加记录，并更新这段关系的最近联系日期。</p>
+          <p className="muted small-text">
+            {t("互动按事件追加记录，并更新这段关系的最近联系日期。")}
+          </p>
         </>
       )}
     </Modal>

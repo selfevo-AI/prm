@@ -378,6 +378,109 @@ async fn failed_runs_are_retried_then_marked_failed() {
 }
 
 #[tokio::test]
+async fn agent_connections_open_relations_and_link_their_imports() {
+    let h = Harness::new().await;
+    let (status, created) = h
+        .owner(
+            "/api/agents/connections",
+            Some(json!({
+                "name": "Grok 机器人", "protocol": "http", "platform": "grok",
+                "relationship_type": "ai_assistant", "scenes": ["work", "learning"],
+                "notes": "工作与学习助手"
+            })),
+        )
+        .await;
+    assert_eq!(status, StatusCode::OK, "{created}");
+    let agent = h.entity(created["agent_id"].as_str().unwrap()).await;
+    assert_eq!(agent["kind"], "ai_agent");
+    assert_eq!(agent["worlds"], json!(["digital"]));
+    assert_eq!(agent["properties"]["platform"], "grok");
+    assert_eq!(agent["scenes"], json!(["work", "learning"]));
+    let relationship = h.entity(created["relationship_id"].as_str().unwrap()).await;
+    assert_eq!(relationship["kind"], "relationship");
+    assert_eq!(relationship["properties"]["party_kind"], "ai_agent");
+    assert_eq!(relationship["properties"]["agent_name"], "Grok 机器人");
+    assert_eq!(relationship["scenes"], json!(["work", "learning"]));
+    let relations = h.relations().await;
+    assert!(relations.iter().any(|r| {
+        r["subject"] == created["relationship_id"]
+            && r["predicate"] == "involves"
+            && r["object"] == created["agent_id"]
+    }));
+    assert!(relations.iter().any(|r| {
+        r["subject"] == created["relationship_id"] && r["predicate"] == "relates_to_self"
+    }));
+    let token = created["token"].as_str().unwrap();
+    let outcome = h
+        .bearer(
+            token,
+            IMPORT,
+            Some(json!({"items":[{"kind":"note","title":"跟进纪要"}]})),
+        )
+        .await
+        .1;
+    let import = h.entity(outcome["import_id"].as_str().unwrap()).await;
+    assert_eq!(import["properties"]["agent_entity_id"], created["agent_id"]);
+    assert!(h.relations().await.iter().any(|r| {
+        r["subject"] == outcome["import_id"]
+            && r["predicate"] == "from_agent"
+            && r["object"] == created["agent_id"]
+    }));
+    let list = h.owner("/api/agents/connections", None).await.1;
+    let entry = list["connections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["id"] == created["id"])
+        .unwrap()
+        .clone();
+    assert_eq!(entry["platform"], "grok");
+    assert_eq!(entry["relationship_id"], created["relationship_id"]);
+    assert_eq!(entry["scenes"], json!(["work", "learning"]));
+    assert!(list["platforms"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|p| p["id"] == "grok"));
+    assert!(list["agent_relationship_types"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t["id"] == "ai_assistant"));
+}
+
+#[tokio::test]
+async fn agent_relations_stay_in_the_connection_flow() {
+    let h = Harness::new().await;
+    for body in [
+        json!({"name":"x","protocol":"http","platform":"nope"}),
+        json!({"name":"x","protocol":"http","relationship_type":"friend"}),
+        json!({"name":"","protocol":"http"}),
+        json!({"name":"x","protocol":"carrier-pigeon"}),
+    ] {
+        assert_eq!(
+            h.owner("/api/agents/connections", Some(body.clone()))
+                .await
+                .0,
+            StatusCode::BAD_REQUEST,
+            "{body}"
+        );
+    }
+    assert_eq!(
+        h.owner(
+            "/api/relationships",
+            Some(json!({"person_name":"李华","type":"ai_assistant"}))
+        )
+        .await
+        .0,
+        StatusCode::BAD_REQUEST
+    );
+    // A connection without explicit fields stays backward compatible.
+    let (id, token) = h.connection("测试 Agent").await;
+    assert!(!id.is_empty() && token.starts_with("prm_"));
+}
+
+#[tokio::test]
 async fn disabled_models_fall_back_to_offline_rules() {
     let h = Harness::new().await;
     let (_, model) = h

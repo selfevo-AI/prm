@@ -5,4 +5,5 @@
 pub mod credentials;
 pub mod executor;
 pub mod gateway;
+pub mod registry;
 pub mod router;

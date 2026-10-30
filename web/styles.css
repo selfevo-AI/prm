@@ -894,7 +894,8 @@ tbody tr:hover {
 .tabs {
   display: flex;
   align-items: center;
-  gap: 25px;
+  flex-wrap: wrap;
+  gap: 10px 25px;
   border-bottom: 1px solid var(--line);
   margin-bottom: 25px;
   min-height: 42px;
@@ -2806,6 +2807,20 @@ dd {
   padding: 5px 6px;
   max-width: 120px;
 }
+.locale-select {
+  font-size: 11px;
+  color: #53695c;
+  border: 1px solid #dce5de;
+  border-radius: 4px;
+  background: #f6f9f7;
+  padding: 5px 6px;
+  max-width: 96px;
+}
+.auth-top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
 .scene-banner {
   display: flex;
   align-items: center;
@@ -3150,6 +3165,28 @@ dd {
   background: #fff;
   padding: 8px;
   border-radius: 3px;
+}
+.snippet-text {
+  margin: 0;
+  padding: 8px;
+  background: #fff;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.token-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.connection-scenes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .hub-list {
   list-style: none;

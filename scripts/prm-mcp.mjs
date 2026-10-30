@@ -28,26 +28,26 @@ const SCENES = ["self", "emotion", "life", "work", "health", "learning", "financ
 const scenes = {
   type: "array",
   items: { type: "string", enum: SCENES },
-  description: "人生场景：self 自我、emotion 情感、life 生活、work 工作、health 健康、learning 学习、finance 财务、social 社交",
+  description: "人生场景：self 自我、emotion 情感、life 生活、work 工作、health 健康、learning 学习、finance 财务、social 社交 (life scenes: self, emotion, life, work, health, learning, finance, social)",
 };
 const tools = [
   {
     name: "prm_import",
-    title: "导入到 PRM",
+    title: "导入到 PRM · Import into PRM",
     description:
-      "把整理好的信息交给本人的 PRM（个人资源与关系管理）。PRM 会经路由交给本地模型或离线规则处理，结果只作为待审建议，由本人决定是否纳入。可以导入资源、关系、消息、知识、人物和任务；也可以直接提交对话 messages。不会返回本人的任何数据。",
+      "把整理好的信息交给本人的 PRM（个人资源与关系管理）。PRM 会经路由交给本地模型或离线规则处理，结果只作为待审建议，由本人决定是否纳入。可以导入资源、关系、消息、知识、人物和任务；也可以直接提交对话 messages。不会返回本人的任何数据。 / Hand organized information to the owner's PRM (personal resource & relation management). PRM routes it to a local model or offline rules; results are proposals the owner reviews. Import resources, relations, messages, notes, people and tasks, or submit chat messages. Never returns any of the owner's data.",
     inputSchema: {
       type: "object",
       properties: {
         scenes,
-        conversation: { type: "string", maxLength: 200, description: "外部会话或任务的引用（可选）" },
+        conversation: { type: "string", maxLength: 200, description: "外部会话或任务的引用（可选）· external conversation or task reference (optional)" },
         items: {
           type: "array",
           maxItems: 100,
           items: {
             type: "object",
             properties: {
-              ref: { type: "string", maxLength: 40, description: "本批内的编号，关系项可通过它引用其他项" },
+              ref: { type: "string", maxLength: 40, description: "本批内的编号，关系项可通过它引用其他项 · batch-local reference used by relation items" },
               kind: { type: "string", enum: ["resource", "relation", "message", "note", "person", "task"] },
               title: { type: "string", maxLength: 160 },
               body: { type: "string", maxLength: 8000 },
@@ -55,11 +55,11 @@ const tools = [
               attributes: {
                 type: "object",
                 additionalProperties: { type: "string", maxLength: 400 },
-                description: "补充属性，例如资源的 unit、location、sku、category、minimum",
+                description: "补充属性，例如资源的 unit、location、sku、category、minimum · extra attributes",
               },
-              subject: { type: "string", description: "关系项：起点的 ref" },
+              subject: { type: "string", description: "关系项：起点的 ref · relation item: subject ref" },
               predicate: { type: "string", enum: ["references", "uses", "supplies", "stored_at", "implements"] },
-              object: { type: "string", description: "关系项：终点的 ref" },
+              object: { type: "string", description: "关系项：终点的 ref · relation item: object ref" },
             },
             required: ["kind"],
             additionalProperties: false,
@@ -84,8 +84,9 @@ const tools = [
   },
   {
     name: "prm_import_status",
-    title: "查询 PRM 导入状态",
-    description: "查询本连接提交的导入是否已处理、有多少建议待本人审核。不提供 import_id 时列出最近的导入。",
+    title: "查询 PRM 导入状态 · Check PRM import status",
+    description:
+      "查询本连接提交的导入是否已处理、有多少建议待本人审核。不提供 import_id 时列出最近的导入。 / Report whether an import from this connection is processed and how many proposals await the owner. Lists recent imports when import_id is omitted.",
     inputSchema: {
       type: "object",
       properties: { import_id: { type: "string" } },
@@ -95,7 +96,7 @@ const tools = [
 ];
 
 async function request(path, body) {
-  if (!token) throw new Error("未设置 PRM_CONNECTION_TOKEN：请在 PRM「数字空间 · Agent 接入」中签发令牌。");
+    if (!token) throw new Error("未设置 PRM_CONNECTION_TOKEN：请在 PRM「数字空间 · Agent 接入」中签发令牌。 / PRM_CONNECTION_TOKEN is not set; issue a token in PRM under Digital space · Agent connections.");
   const response = await fetch(new URL(path, prm), {
     method: body ? "POST" : "GET",
     redirect: "error",
@@ -118,8 +119,8 @@ async function callTool(params) {
       const result = await request("/api/agent/import", args);
       const text =
         result.status === "queued"
-          ? `已导入（${result.import_id}），正在等待本地模型处理；结果将由本人审核。`
-          : `已导入（${result.import_id}），生成 ${result.proposals_created} 条待本人审核的建议。`;
+          ? `已导入（${result.import_id}），正在等待本地模型处理；结果将由本人审核。 / Imported (${result.import_id}); queued for the local model, results await the owner's review.`
+          : `已导入（${result.import_id}），生成 ${result.proposals_created} 条待本人审核的建议。 / Imported (${result.import_id}); ${result.proposals_created} proposals await the owner's review.`;
       return { content: [{ type: "text", text }], structuredContent: result };
     }
     if (params?.name === "prm_import_status") {
@@ -147,8 +148,8 @@ async function handle(message) {
       respond({
         protocolVersion: SUPPORTED.includes(requested) ? requested : SUPPORTED[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: "prm", title: "PRM 个人资源与关系", version: "0.4.0" },
-        instructions: "用 prm_import 把资源、关系与待办交给本人的 PRM；PRM 只接收待审信息，不会返回本人的数据。",
+        serverInfo: { name: "prm", title: "PRM 个人资源与关系 · Personal resources & relations", version: "0.5.0" },
+        instructions: "用 prm_import 把资源、关系与待办交给本人的 PRM；PRM 只接收待审信息，不会返回本人的数据。 / Use prm_import to hand resources, relations and to-dos to the owner's PRM; it only accepts reviewable imports and never returns the owner's data.",
       });
       return;
     }

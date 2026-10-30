@@ -187,19 +187,27 @@ pub async fn import(
     let (items, format) = normalize(body)?;
     let inner = state.lock()?;
     let (name, protocol) = credentials::name_of(&inner.store, &agent)?;
+    let agent_entity = credentials::entity_of(&inner.store, &agent)?;
     let outcome = inner.store.transaction(|store| {
+        let mut properties = json!({
+            "contract": "prm-import-v2", "agent_id": agent, "agent_name": name, "protocol": protocol,
+            "format": format, "conversation": conversation, "items": items, "item_count": items.len(),
+            "received_at": now(), "review_required": true,
+        });
+        if !agent_entity.is_empty() {
+            properties["agent_entity_id"] = json!(&agent_entity);
+        }
         let import = store.insert_scoped(
             "agent_import",
             &format!("来自 {name} 的导入"),
             &[],
             &scenes,
-            json!({
-                "contract": "prm-import-v2", "agent_id": agent, "agent_name": name, "protocol": protocol,
-                "format": format, "conversation": conversation, "items": items, "item_count": items.len(),
-                "received_at": now(), "review_required": true,
-            }),
+            properties,
             "queued",
         )?;
+        if !agent_entity.is_empty() {
+            store.relate(&import.id, "from_agent", &agent_entity)?;
+        }
         store.audit("external", "agent.import_received", &import.id)?;
         let route = router::route(store, &agent, &scenes, &items)?;
         executor::dispatch(store, &import, &items, &route)
