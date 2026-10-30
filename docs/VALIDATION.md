@@ -1,8 +1,46 @@
 # 验证记录
 
+## 0.5.0（2026-10-31）
+
+验证日期：2026-10-31，版本 0.5.0。Windows / Rust GNU (stable) / Node.js 24，项目内置 PostgreSQL 17.9（`.tools/pgsql`，127.0.0.1:55432）。Rust 测试使用临时目录对应的独立工作区 schema，浏览器测试使用 `test-data/e2e-*` 独立临时目录，均不接触 `data/` 工作区。本轮由本人在终端执行一键脚本（前端构建 → Rust 构建 → fmt / clippy → 全部测试 → E2E → 提交推送）完成。
+
+### 自动检查
+
+| 检查 | 结果 |
+| --- | --- |
+| `npm run build` | TypeScript（strict）与 Vite 生产构建通过（1600 个模块） |
+| `cargo build` | 通过（Cargo.lock 更新为 0.5.0） |
+| `cargo fmt --check` | 通过 |
+| `cargo clippy --all-targets -- -D warnings` | 通过 |
+| `cargo test --all-targets` | 52 项通过，0 失败：15 单元 + 8 Agent 与路由 + 3 PRP + 22 安全与工作流 + 4 自我与关系 |
+| `npm run test:e2e` | 3 条完整流程通过（37.2 秒） |
+
+### 本轮新增覆盖
+
+**本体与 Agent 接入（接入即关系）**
+- `ai_agent` 类注册到数字界；`involves` 扩展到 AI Agent；`from_agent` 谓词属于来源追溯层且不可由本人手工建立；`sync_sql` 包含新类与新谓词（单元）。
+- `POST /api/agents/connections` 带 `platform`、`relationship_type`、`scenes`、`notes` 时：登记 `ai_agent` 实体（世界、平台、场景正确），建立 `relationship`（`party_kind = ai_agent`、`agent_name`、场景），自动建立 `involves` 与 `relates_to_self`，返回令牌与接入片段；用该令牌导入后，导入记录带 `agent_entity_id` 并通过 `from_agent` 关联到 Agent；连接列表携带平台、场景与关系编号，并提供平台预设与 AI 关系类型（集成）。
+- 非法平台、非 AI 关系类型、空名称、非法接入方式均 400；人物关系流程拒绝 `ai_*` 类型；仅 `name + protocol` 的旧式签发保持兼容（集成）。
+- 平台预设 id 唯一、`custom` 可用、片段含令牌与协议形状；AI 关系类型列表、默认场景与对方名称解析（单元）。
+
+**界面与国际化（浏览器）**
+- 流程三（新增）：登录后切换为英文，导航、页面标题、数字空间与 Agent 接入面板以英文呈现；连接列表显示前一流程签发的“测试 Agent”及平台“Custom / Generic”；切回中文后页面标题恢复；无页面错误。
+- 流程一、二在中文默认下保持通过（360/390/768/1440 像素无横向溢出）；Agent 接入表单新增的接入平台、关系类型与关系场景字段不影响原有“连接名称 + 接入方式 + 签发令牌”的流程，签发后仍用独立 HTTP 客户端导入成功（工作区读取 403）。
+
+**既有回归**
+- 0.4 的 47 项 Rust 测试与两条浏览器流程全部保持通过。
+
+### 未覆盖与限制
+
+- Grok、Claude、ChatGPT、Gemini、Copilot、Muse、DeepSeek、通义千问、Kimi、Dify、n8n、LangChain、Cursor、Cline 的预设只提供接入提示、文档链接与配置片段，未在各平台真实联调；接入通道本身（HTTP 导入、MCP 桥结构）由集成测试与 0.4 的验证覆盖。
+- 英文词典以中文原文为键，界面文案、本体标签、量表目录元数据、状态与谓词均已翻译；服务端返回的用户数据（实体标题、服务端校验错误文本）保持原语言。
+- 其余限制同 0.4（真实本地模型推理、真实 MCP 客户端、外部 TLS、多设备等）。
+
+## 0.4.0（2026-10-29）
+
 验证日期：2026-10-29，版本 0.4.0。Windows / Rust GNU (stable) / Node.js 24，真实 PostgreSQL 17.9（项目内置）。Rust 测试使用临时目录对应的独立工作区 schema，浏览器测试使用 `test-data/e2e-*` 独立临时目录，均不接触 `data/` 工作区。
 
-## 自动检查
+### 自动检查
 
 | 检查 | 结果 |
 | --- | --- |
@@ -13,7 +51,7 @@
 | `cargo build --all-targets` | 通过 |
 | `npm run test:e2e` | 2 条完整流程通过（52.5 秒） |
 
-## 本轮新增覆盖
+### 本轮新增覆盖
 
 **本体注册表（单元）**
 - 类与谓词标识唯一、SQL 安全；谓词签名只引用已注册的类；非本人可建立的关系（derived_from、records、receives、pays 等）不可通过 `/api/relations` 建立；场景校验与默认值。
@@ -50,7 +88,7 @@
 **既有安全回归（22 项全部保持通过）**
 - 核心精神加密与重认证、只读授权绑定/撤销/锁定敏感、签名重放与篡改拒绝、会话限速、审计不可改、旧 SQLite 迁移幂等且原文不变、单工作区锁、跨站与 DNS 重绑定拒绝。
 
-## 未覆盖与限制
+### 未覆盖与限制
 
 - 本地模型执行器尚未对接真实模型端到端验证（本机未安装 Ollama 或 OpenAI 兼容服务）。协议本身（领取、租约、结果校验、失败重试）已由 Rust 集成测试覆盖；调用真实模型的路径需按所选模型另行验证。
 - MCP 工具桥为结构实现（JSON-RPC over stdio），未在真实 MCP 客户端中联调。
